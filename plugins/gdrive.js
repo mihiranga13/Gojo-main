@@ -1,87 +1,88 @@
-const l = console.log;
+const fs = require('fs');
+const { google } = require('googleapis');
+const { cmd } = require('../lib/command');
 const config = require('../settings');
-const { cmd, commands } = require('../lib/command');
-const axios = require("axios");
 
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+// Max file size: 1 GB
+const MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+
+// Format file size
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Google Drive Downloader with size limit (e.g., 1024MB)
-const MAX_DOWNLOAD_SIZE = 1024 * 1024 * 1024;
+// Extract file ID from URL or raw ID
+function extractFileId(input) {
+  if (/^[\w-]{15,}$/.test(input)) return input; // Raw ID
+  const match = input.match(/(?:\/d\/|id=)([\w-]{10,})/);
+  return match ? match[1] : null;
+}
 
+// Get Google Drive client using service account
+async function getDriveClient() {
+  if (!process.env.GDRIVE_SERVICE_ACCOUNT_KEY) {
+    throw new Error('No service-account key found in env var GDRIVE_SERVICE_ACCOUNT_KEY');
+  }
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GDRIVE_SERVICE_ACCOUNT_KEY),
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+  });
+  return google.drive({ version: 'v3', auth });
+}
+
+// Main command
 cmd({
-    pattern: "gdrive",
-    alias: ["googledrive"],
-    react: '🎗️',
-    desc: "Download Google Drive files",
-    category: "download",
-    filename: __filename
-}, async (conn, mek, m, { from, q, pushname }) => {
-    if (!q || !q.startsWith("https://")) {
-        return conn.sendMessage(from, { text: "𝖯𝗅𝖾𝖺𝗌𝖾 𝖦𝗂𝗏𝖾 𝖬𝖾 𝖯𝗋𝗈𝗏𝗂𝖽𝖾 `𝖦𝖽𝗋𝗂𝗏𝖾 𝖴𝗋𝗅` ❗" }, { quoted: mek });
+  pattern: 'gdrive',
+  alias: ['googledrive'],
+  react: '📥',
+  desc: 'Download Google Drive files (public or shared with bot)',
+  category: 'download',
+  filename: __filename,
+}, async (conn, mek, m, { from, q, prefix, pushName }) => {
+  if (!q) {
+    return conn.sendMessage(from, {
+      text: `❌ Provide a Google Drive link or ID.\nEx: ${prefix}gdrive https://drive.google.com/file/d/FILE_ID/view`
+    }, { quoted: mek });
+  }
+
+  const fileId = extractFileId(q.trim());
+  if (!fileId) {
+    return conn.sendMessage(from, { text: '❌ Could not extract file ID from the input.' }, { quoted: mek });
+  }
+
+  try {
+    const drive = await getDriveClient();
+    const meta = await drive.files.get({ fileId, fields: 'name,size,mimeType' });
+    const { name, size, mimeType } = meta.data;
+
+    if (size && Number(size) > MAX_SIZE_BYTES) {
+      return conn.sendMessage(from, {
+        text: `⚠️ File too large (${formatBytes(size)}). Max allowed: ${(MAX_SIZE_BYTES / 1e6)} MB.`,
+      }, { quoted: mek });
     }
 
-    try {
-        const baseUrl = 'https://api.gdriveapi.xyz'; // 👈 Adjust if needed
-        const data = await axios.get(`${baseUrl}/api/gdrivedl?url=${encodeURIComponent(q)}`);
-        const fileInfo = data.data.data || data.data;
+    // Stream file directly to WhatsApp
+    const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
 
-        await conn.sendMessage(
-            from,
-            {
-                text: `*乂 GOJO-MD GDRIVE DOWNLOADER*
+    await conn.sendMessage(from, {
+      document: res.data,
+      fileName: name,
+      mimetype: mimeType || 'application/octet-stream',
+      caption: `📁 *${name}*\n📦 ${size ? formatBytes(size) : 'Unknown'}\nDownloaded for ${pushName}`,
+    }, { quoted: mek });
 
-📁 𝖭𝖺𝗆𝖾 : ${fileInfo.fileName}
-📻 𝖥𝗂𝗅𝖾 𝖲𝗂𝗓𝖾 : ${fileInfo.fileSize}
-🖇️ 𝖡𝖺𝗌𝖾 𝖴𝗋𝗅 : www.gdrive.com
+    await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
 
-> *©ᴘᴏᴡᴇʀᴇᴅ ʙʏ ꜱayura mihiranga*`,
-                contextInfo: {
-                    forwardingScore: 999,
-                    isForwarded: true,
-                    externalAdReply: {
-                        title: `GOJO-MD Gdrive Downloader`,
-                        body: `${fileInfo.fileName || fileInfo.title || `Undefined`} : Powered By Sayura Gdrive Engine`,
-                        thumbnailUrl: `https://raw.githubusercontent.com/sayura19/Helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png`,
-                        sourceUrl: `https://www.google.com`,
-                        mediaType: 1,
-                        renderLargerThumbnail: true
-                    }
-                }
-            },
-            { quoted: mek }
-        );
-
-        const fileSizeBytes = fileInfo.fileSizeInBytes || fileInfo.fileSize || 0;
-
-        if (fileSizeBytes > MAX_DOWNLOAD_SIZE) {
-            await conn.sendMessage(from, {
-                text: `⚠️ File is too large. Maximum allowed size is 1024 MB. This file is ${formatFileSize(fileSizeBytes)}.`,
-            }, { quoted: mek });
-            return await conn.sendMessage(from, { react: { text: "⚠️", key: mek.key } });
-        }
-
-        await conn.sendMessage(from, {
-            document: { url: fileInfo.download || fileInfo.link || fileInfo.url },
-            fileName: fileInfo.fileName || fileInfo.title,
-            mimetype: fileInfo.mimeType || fileInfo.file_type,
-            caption: `> *©ᴘᴏᴡᴇʀᴇᴅ ʙʏ ꜱayura tech*`
-        }, { quoted: mek });
-
-        await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
-
-    } catch (error) {
-        console.error('❌ Error in Google Drive downloader:', error);
-        const errorMessage = error.response && error.response.status === 404
-            ? '❌ Error: File not found. Check the URL and try again.'
-            : `❌ Error: ${error.message}`;
-
-        await conn.sendMessage(from, { text: errorMessage }, { quoted: mek });
-        await conn.sendMessage(from, { react: { text: "❌", key: mek.key } });
-    }
+  } catch (err) {
+    console.error('GDrive error:', err);
+    const msg = err.message.includes('No service-account')
+      ? '❌ Missing GDRIVE_SERVICE_ACCOUNT_KEY environment variable (set your Google Service Account key).'
+      : `❌ Download failed: ${err.message}`;
+    await conn.sendMessage(from, { text: msg }, { quoted: mek });
+    await conn.sendMessage(from, { react: { text: "❌", key: mek.key } });
+  }
 });

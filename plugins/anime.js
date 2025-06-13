@@ -91,10 +91,10 @@ if (q.includes("https://slanimeclub.co/movies")) {
         
 const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclub/tvshow?url=${q}&apikey=vajiraofficial`)
 
-        if (data.data.data.length < 1) return await conn.sendMessage(from, { text: lang ? "*මට කිසිවක් සොයාගත නොහැකි විය :(*" : "*No results found :(*" }, { quoted: mek });
+        if (data.data.data.episodes.length < 1) return await conn.sendMessage(from, { text: lang ? "*මට කිසිවක් සොයාගත නොහැකි විය :(*" : "*No results found :(*" }, { quoted: mek });
     
         var srh = [];  
-        for (var i = 0; i < data.data.data.length; i++) {
+        for (var i = 0; i < data.data.data.episodes.length; i++) {
             srh.push({
                 title: i + 1,
                 description: `${data.data.data.episodes[i].title}|| 'N/A'}\n┃ 🌍 Date: ${data.data.data.episodes[i].date}\n┃ 🔗 Url: ${data.data.data.episodes[i].link}_\n┃━━━━━━━━━━━━━━━\n`,

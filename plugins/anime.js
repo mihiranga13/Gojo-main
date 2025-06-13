@@ -103,7 +103,7 @@ const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclu
         }
 
         const sections = [{
-            title: lang ? "_[slanimeclub එකේ පෙන්වා ඇති ප්‍රතිඵල]._" : "_[Result from slanimeclub.]_",
+            title: "_[Result from slanimeclub.]_",
             rows: srh
         }];
         

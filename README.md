@@ -1,5 +1,5 @@
 l
-<h1 align="center">GOJO-MD 0.0.1</h1>
+<h1 align="center">GOJO-MD V1</h1>
 
 <img src="https://i.imgur.com/dBaSKWF.gif" height="90" width="100%">
 

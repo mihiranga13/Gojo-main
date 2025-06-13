@@ -147,7 +147,7 @@ text: "*👨‍💻 GOJO MD 👨‍💻 successfully connected* ✓\n\n Use .Upd
 contextInfo: {
 externalAdReply: {
 title: "👨‍💻 GOJO MD 👨‍💻\nSuccessfully Connected !",	
-thumbnailUrl: "https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png",
+thumbnailUrl: "https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png",
 sourceUrl: "",
 mediaType: 1,
 renderLargerThumbnail: true
@@ -446,7 +446,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }
@@ -480,7 +480,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }
@@ -500,7 +500,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }
@@ -572,7 +572,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }
@@ -591,7 +591,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }
@@ -637,7 +637,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }
@@ -681,7 +681,7 @@ title: '👨‍💻 GOJO - ＭＤ 👨‍💻',
 body: 'ᴀ ꜱɪᴍᴘʟᴇ ᴡʜᴀᴛꜱᴀᴘᴘ ʙᴏᴛ',
 mediaType: 1,
 sourceUrl: "https://wa.me/94743826406" ,
-thumbnailUrl: 'https://raw.githubusercontent.com/gojosathory1/My-helper/refs/heads/main/file_00000000d0dc61f597f450261ecfe33f%20(1).png' ,
+thumbnailUrl: 'https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png' ,
 renderLargerThumbnail: false,
 showAdAttribution: true
 }

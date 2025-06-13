@@ -21,7 +21,7 @@ cmd({
         // Send voice message (PTT style)
         await gojo.sendMessage(from, {
             audio: {
-                url: "https://github.com/sayura19/Helper/raw/refs/heads/main/gojo-satoru%20(1).mp3"
+                url: "https://github.com/gojo18888/Photo-video-/raw/refs/heads/main/gojo-satoru%20(1).mp3"
             },
             mimetype: 'audio/mpeg',
             ptt: true

@@ -52,7 +52,12 @@ cmd({
     filename: __filename
 }, async (conn, m, mek, { from, prefix, q, l, reply }) => {
     try {
+    
+    
         if (!q) return await reply('*Please Give Me Text..! 🖊️*')
+
+if (q.includes("https://slanimeclub.co/movies")) {
+
 
         const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclub/movie?url=${q}&apikey=vajiraofficial`)
         const movie = data.data?.data?.moviedata
@@ -81,6 +86,40 @@ cmd({
         }
 
         return await conn.replyList(from, listMessage, { quoted: mek })
+        
+if (q.includes("https://slanimeclub.co/tvshow")) {
+        
+const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclub/tvshow?url=${q}&apikey=vajiraofficial`)
+
+        if (data.data.data.length < 1) return await conn.sendMessage(from, { text: lang ? "*මට කිසිවක් සොයාගත නොහැකි විය :(*" : "*No results found :(*" }, { quoted: mek });
+    
+        var srh = [];  
+        for (var i = 0; i < data.data.data.length; i++) {
+            srh.push({
+                title: i + 1,
+                description: `${data.data.data.episodes[i].title}|| 'N/A'}\n┃ 🌍 Date: ${data.data.data.episodes[i].date}\n┃ 🔗 Url: ${data.data.data.episodes[i].link}_\n┃━━━━━━━━━━━━━━━\n`,
+                rowId: prefix + 'slanimedl ' + data.data.data.episodes[i].link
+            });
+        }
+
+        const sections = [{
+            title: lang ? "_[slanimeclub එකේ පෙන්වා ඇති ප්‍රතිඵල]._" : "_[Result from slanimeclub.]_",
+            rows: srh
+        }];
+        
+
+        const listMessage = {
+            text: '',
+            footer: config.FOOTER,
+            title: 'Result from slanimeclub. 📲',
+            buttonText: '*🔢 Reply below number*',
+            sections
+        }
+
+        return await conn.replyList(from, listMessage, { quoted: mek })
+        
+        }
+        
     } catch (e) {
         reply('*ERROR !!*')
         l(e)

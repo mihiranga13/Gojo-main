@@ -1,3 +1,4 @@
+const l = console.log;
 const { cmd } = require("../lib/command");
 
 cmd({
@@ -7,69 +8,46 @@ cmd({
   desc: "Owner Only - view once message එක නැවත ලබා ගන්න",
   category: "owner",
   filename: __filename,
-}, async (client, message, match, { from, isCreator }) => {
+}, async (client, m, text, { from, isCreator }) => {
   try {
     if (!isCreator) {
       return client.sendMessage(from, {
         text: "*📛 මේක owner ට විතරයි.*"
-      }, { quoted: message });
+      }, { quoted: m });
     }
 
-    // View once message detect කිරීම
-    const quoted = message.quoted || (message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.viewOnceMessage?.message && {
-      mtype: Object.keys(message.message.extendedTextMessage.contextInfo.quotedMessage.viewOnceMessage.message)[0],
-      download: () => client.downloadMediaMessage({
-        message: {
-          ...message.message.extendedTextMessage.contextInfo.quotedMessage.viewOnceMessage
-        }
-      }),
-      text: message.message.extendedTextMessage.contextInfo.quotedMessage.viewOnceMessage.message?.conversation || '',
-      ptt: false
-    });
+    const quoted = m.quoted;
 
-    if (!quoted || !quoted.mtype) {
+    if (!quoted || !quoted.message || !quoted.message.viewOnceMessage || !quoted.message.viewOnceMessage.message) {
       return client.sendMessage(from, {
         text: "*🍁 කරුණාකර view once message එකකට reply කරන්න.*"
-      }, { quoted: message });
+      }, { quoted: m });
     }
 
-    const buffer = await quoted.download();
-    const mtype = quoted.mtype;
-    const options = { quoted: message };
+    const viewOnceMsg = quoted.message.viewOnceMessage.message;
+    const type = Object.keys(viewOnceMsg)[0];
+    const buffer = await client.downloadMediaMessage({ message: viewOnceMsg });
 
-    let content = {};
-    switch (mtype) {
-      case "imageMessage":
-        content = {
-          image: buffer,
-          caption: quoted.text || '',
-        };
-        break;
-      case "videoMessage":
-        content = {
-          video: buffer,
-          caption: quoted.text || '',
-        };
-        break;
-      case "audioMessage":
-        content = {
-          audio: buffer,
-          mimetype: "audio/mp4",
-          ptt: quoted.ptt || false
-        };
-        break;
-      default:
-        return client.sendMessage(from, {
-          text: "❌ image, video, audio විතරක් පමණයි මෙතැන support වෙන්නෙ."
-        }, { quoted: message });
+    let msg = {};
+
+    if (type === "imageMessage") {
+      msg.image = buffer;
+      msg.caption = viewOnceMsg.imageMessage.caption || '';
+    } else if (type === "videoMessage") {
+      msg.video = buffer;
+      msg.caption = viewOnceMsg.videoMessage.caption || '';
+    } else {
+      return client.sendMessage(from, {
+        text: "❌ View Once message එකේ image/ video විතරයි support වෙන්නෙ."
+      }, { quoted: m });
     }
 
-    await client.sendMessage(from, content, options);
+    await client.sendMessage(from, msg, { quoted: m });
 
   } catch (err) {
-    console.error("vv Error:", err);
+    console.error("vv error:", err);
     await client.sendMessage(from, {
-      text: "❌ view once message එක ලබාගැනීමේදී දෝෂයක්:\n" + err.message
-    }, { quoted: message });
+      text: "❌ Error: " + err.message
+    }, { quoted: m });
   }
 });

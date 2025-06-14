@@ -33,7 +33,7 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
         const fileInfo = {
             name: data.name || 'Unknown File',
             downloadLink: data.download_link || '',
-            thumbnail: "https://i.ibb.co/PS5DZdJ/Chat-GPT-Image-Mar-30-2025-12-53-39-PM.png" // Thumbnail URL
+            thumbnail: "https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png" // Thumbnail URL
         };
 
         if (!fileInfo.downloadLink) return reply("❌ No download link found for this file.");
@@ -44,14 +44,13 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
             forwardingScore: 1000,
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
-                newsletterJid: '120363292876277898@newsletter',
-                newsletterName: "𝐇𝐀𝐍𝐒 𝐁𝐘𝐓𝐄 𝐌𝐃",
+                newsletterName: "𝐆𝐎𝐉𝐎 𝐌𝐃",
                 serverMessageId: 143,
             },
         };
 
         let desc = `
-╔══✦❘༻ *HANS BYTE* ༺❘✦══╗
+╔══✦❘༻ *𝐆𝐎𝐉𝐎 𝐌𝐃* ༺❘✦══╗
 ┇  📂 *𝗚𝗢𝗢𝗚𝗟𝗘 𝗗𝗥𝗜𝗩𝗘 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* 📂
 ┇╭───────────────────
 ┇│•📁 𝗙𝗶𝗹𝗲 𝗡𝗮𝗺𝗲: ${fileInfo.name} 
@@ -59,8 +58,8 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
 ╰─・─・─・─・─・─・─・─╯
 ╭━✦❘༻ 𝗙𝗜𝗟𝗘 𝗜𝗡𝗙𝗢 ༺❘✦━╮
 │•🔗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗 𝗟𝗜𝗡𝗞: ${fileInfo.downloadLink}
-╰━✦❘༻ *HANS BYTE* ༺❘✦━╯
-> POWERED BY HANS BYTE MD `;
+╰━✦❘༻ *𝐆𝐎𝐉𝐎* ༺❘✦━╯
+> POWERED BY 𝐆𝐎𝐉𝐎 MD `;
 
         // Send the description and thumbnail image
         await conn.sendMessage(from, {

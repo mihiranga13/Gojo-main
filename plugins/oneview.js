@@ -15,7 +15,18 @@ cmd({
       }, { quoted: message });
     }
 
-    const quoted = message.quoted;
+    // View once message detect කිරීම
+    const quoted = message.quoted || (message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.viewOnceMessage?.message && {
+      mtype: Object.keys(message.message.extendedTextMessage.contextInfo.quotedMessage.viewOnceMessage.message)[0],
+      download: () => client.downloadMediaMessage({
+        message: {
+          ...message.message.extendedTextMessage.contextInfo.quotedMessage.viewOnceMessage
+        }
+      }),
+      text: message.message.extendedTextMessage.contextInfo.quotedMessage.viewOnceMessage.message?.conversation || '',
+      ptt: false
+    });
+
     if (!quoted || !quoted.mtype) {
       return client.sendMessage(from, {
         text: "*🍁 කරුණාකර view once message එකකට reply කරන්න.*"

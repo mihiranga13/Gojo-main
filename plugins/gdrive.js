@@ -1,91 +1,76 @@
-const { cmd, commands } = require('../lib/command');
-const fetch = require('node-fetch');
+const { cmd } = require('../lib/command');
+const fetch = require('node-fetch');        // Node ≥ 18 නම් global fetch උපයෝග කල හැක
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const tmp = require('tmp');                 // ➜  npm i tmp
+const { pipeline } = require('stream/promises');
 
-cmd({
-    pattern: "gdrive",
-    alias: ["gdl", "gdriveDl"],
-    react: "🗂️",
-    desc: "Download Google Drive files and upload directly",
-    category: "download",
-    filename: __filename
+cmd(
+{
+  pattern: 'gdrive',
+  alias: ['gdl', 'gdriveDl'],
+  react: '🗂️',
+  desc : 'Download Google Drive files and upload directly (<= 2 GB)',
+  category: 'download',
+  filename: __filename
 },
-async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply }) => {
-    try {
-        // Check if the prompt (Google Drive URL) is provided
-        if (!q) {
-            return reply("*❌ Please provide a valid Google Drive file URL!*\nExample: `.gdrive <URL>`");
-        }
-
-        // Validate URL (basic check)
-        if (!q.startsWith("https://drive.google.com/file/d/")) {
-            return reply("*❌ Invalid Google Drive file URL!*");
-        }
-
-        const apiUrl = `https://apis.davidcyriltech.my.id/gdrive?url=${encodeURIComponent(q)}`;
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-
-        if (data.status !== 200 || !data.success) return reply("❌ Failed to fetch the Google Drive file.");
-
-        const fileInfo = {
-            name: data.name || 'Unknown File',
-            downloadLink: data.download_link || '',
-            thumbnail: "https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png" // Thumbnail URL
-        };
-
-        if (!fileInfo.downloadLink) return reply("❌ No download link found for this file.");
-
-        // Newsletter context info
-        const newsletterContext = {
-            mentionedJid: [sender],
-            forwardingScore: 1000,
-            isForwarded: true,
-            forwardedNewsletterMessageInfo: {
-                newsletterName: "𝐆𝐎𝐉𝐎 𝐌𝐃",
-                serverMessageId: 143,
-            },
-        };
-
-        let desc = `
-╔══✦❘༻ *𝐆𝐎𝐉𝐎 𝐌𝐃* ༺❘✦══╗
-┇  📂 *𝗚𝗢𝗢𝗚𝗟𝗘 𝗗𝗥𝗜𝗩𝗘 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗𝗘𝗥* 📂
-┇╭───────────────────
-┇│•📁 𝗙𝗶𝗹𝗲 𝗡𝗮𝗺𝗲: ${fileInfo.name} 
-┇│•🌐 𝗟𝗶𝗻𝗸: ${q}
-╰─・─・─・─・─・─・─・─╯
-╭━✦❘༻ 𝗙𝗜𝗟𝗘 𝗜𝗡𝗙𝗢 ༺❘✦━╮
-│•🔗 𝗗𝗢𝗪𝗡𝗟𝗢𝗔𝗗 𝗟𝗜𝗡𝗞: ${fileInfo.downloadLink}
-╰━✦❘༻ *𝐆𝐎𝐉𝐎* ༺❘✦━╯
-> POWERED BY 𝐆𝐎𝐉𝐎 MD `;
-
-        // Send the description and thumbnail image
-        await conn.sendMessage(from, {
-            image: { url: fileInfo.thumbnail },
-            caption: desc,
-            contextInfo: newsletterContext
-        }, { quoted: mek });
-
-        // Download the file from the Google Drive link as a buffer
-        const fileResponse = await axios.get(fileInfo.downloadLink, { responseType: 'arraybuffer' });
-
-        // Convert the buffer to a stream
-        const fileBuffer = Buffer.from(fileResponse.data, 'binary');
-        const fileStream = fs.createWriteStream(path.join(__dirname, 'tempFile'));
-
-        // Write buffer to file
-        fs.writeFileSync(path.join(__dirname, 'tempFile'), fileBuffer);
-
-        // Send the file as a document
-        await conn.sendMessage(from, { document: { url: path.join(__dirname, 'tempFile') }, mimetype: 'application/octet-stream', fileName: fileInfo.name }, { quoted: mek });
-
-        // Clean up the temporary file
-        fs.unlinkSync(path.join(__dirname, 'tempFile'));
-
-    } catch (e) {
-        console.error("Error fetching Google Drive file:", e);
-        reply("⚠️ Error fetching the Google Drive file.");
+async (conn, mek, m, { from, reply, q, sender }) => {
+  try {
+    /* ───────────────────────────── Validate URL ───────────────────────────── */
+    if (!q) {
+      return reply('❌  *Google Drive URL එක දෙන්න!*\nඋදාහරණය :  `.gdrive https://drive.google.com/file/d/FILE_ID/view`');
     }
+
+    // Accept both file/d and uc?id formats
+    const reg = /drive\.google\.com\/(?:file\/d\/|uc\?id=)([A-Za-z0-9_-]{10,})/;
+    const match = q.match(reg);
+    if (!match) return reply('❌  *ලබා දුන්න URL එක Google Drive එකක් නෙමෙයි*');
+
+    /* ───────────────────────── Fetch direct-link & meta ───────────────────── */
+    const apiUrl = `https://apis.davidcyriltech.my.id/gdrive?url=${encodeURIComponent(q)}`;
+    const { data } = await axios.get(apiUrl, { timeout: 30_000 });
+
+    if (data.status !== 200 || !data.success)
+      return reply('⚠️  Google Drive file එක අරගෙන බෑ.');
+
+    const {
+      name = 'file',
+      mimetype = 'application/octet-stream',
+      size = 0,                              // bytes
+      download_link: dl
+    } = data;
+
+    if (!dl) return reply('⚠️  Direct download link එක හමු නොවීය.');
+
+    /* ─────────────────────── Check WhatsApp size limit ────────────────────── */
+    const MAX_DOC = 2 * 1024 * 1024 * 1024;  // 2 GB docs limit on WhatsApp Web 0
+    if (size > MAX_DOC) {
+      return reply(`📄 *${name}* නම් ෆයිලය ${(size/1_048_576).toFixed(1)} MB.
+      WhatsApp docs limit (2 GB) ඉක්මවා තියෙන නිසා file එකට direct link එක එන්නෙ මෙන්න: \n${dl}`);
+    }
+
+    /* ───────────────────────── Download to temp file ──────────────────────── */
+    const tmpFile = tmp.fileSync({ prefix: 'gdrive-', postfix: path.extname(name) });
+    await pipeline(
+      (await axios.get(dl, { responseType: 'stream' })).data,
+      fs.createWriteStream(tmpFile.name)
+    );
+
+    /* ─────────────────────────── Send the document ────────────────────────── */
+    await conn.sendMessage(
+      from,
+      {
+        document : fs.readFileSync(tmpFile.name),   // Baileys will stream-upload
+        mimetype,
+        fileName : name
+      },
+      { quoted: mek }
+    );
+
+    tmpFile.removeCallback();   // cleanup
+  } catch (err) {
+    console.error(err);
+    reply('⚠️  File එක download / upload කරන්න ගියේදී error එකක් ආවා.');
+  }
 });

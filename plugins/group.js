@@ -12,32 +12,32 @@ cmd(
     filename: __filename,
   },
 
-  // ⚠️  PARAMETER ORDER: (message, match, client)
+  // NOTE:  ✅  PARAMETER ORDER: (message, match, client)
   async (message, _match, client) => {
+    /* 1) Group-only guard */
     if (!message.isGroup)
       return await message.reply("👥 This command works only in groups.");
 
-    /* ── Fetch metadata ─────────────────────────────────────────── */
-    const metadata = await client.groupMetadata(message.chat);
+    /* 2) Fetch metadata */
+    const metadata    = await client.groupMetadata(message.chat);
     const participants = metadata.participants || [];
-    const admins = participants.filter((p) => p.admin !== null);
-    const owner =
+    const admins       = participants.filter(p => p.admin !== null);
+    const owner        =
       metadata.owner ||
-      participants.find((p) => p.admin === "superadmin")?.id ||
+      participants.find(p => p.admin === "superadmin")?.id ||
       null;
 
-    /* ── Description & photo ────────────────────────────────────── */
+    /* 3) Description + profile picture */
     const description = metadata.desc || "📝 No description set.";
     let pfp;
     try {
       pfp = await client.profilePictureUrl(message.chat, "image");
     } catch {
-      pfp =
-        "https://telegra.ph/file/9e58d8c3d8ed6a22e2c42.jpg"; // fallback image
+      pfp = "https://telegra.ph/file/9e58d8c3d8ed6a22e2c42.jpg"; // fallback
     }
 
-    /* ── Build caption ──────────────────────────────────────────── */
-    const groupInfo = `
+    /* 4) Build caption */
+    const caption = `
 📛 *Group Name:* ${metadata.subject}
 🆔 *Group ID:* ${metadata.id}
 👤 *Owner:* ${owner ? "@" + owner.split("@")[0] : "Unknown"}
@@ -48,12 +48,12 @@ cmd(
 ${description}
 `.trim();
 
-    /* ── Send message ───────────────────────────────────────────── */
+    /* 5) Send result */
     await client.sendMessage(
       message.chat,
       {
         image: { url: pfp },
-        caption: groupInfo,
+        caption,
         mentions: owner ? [owner] : [],
       },
       { quoted: message }

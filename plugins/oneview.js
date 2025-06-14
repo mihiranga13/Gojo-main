@@ -2,63 +2,63 @@ const { cmd } = require("../lib/command");
 
 cmd({
   pattern: "vv",
-  alias: ["viewonce", 'retrive'],
-  react: '🐳',
-  desc: "Owner Only - retrieve quoted message back to user",
+  alias: ["viewonce", "retrieve"],
+  react: "🐳",
+  desc: "Owner Only - view once message එක නැවත ලබා ගන්න",
   category: "owner",
-  filename: __filename
+  filename: __filename,
 }, async (client, message, match, { from, isCreator }) => {
   try {
     if (!isCreator) {
-      return await client.sendMessage(from, {
-        text: "*📛 This is an owner command.*"
+      return client.sendMessage(from, {
+        text: "*📛 මේක owner ට විතරයි.*"
       }, { quoted: message });
     }
 
-    if (!match.quoted) {
-      return await client.sendMessage(from, {
-        text: "*🍁 Please reply to a view once message!*"
+    const quoted = message.quoted;
+    if (!quoted || !quoted.mtype) {
+      return client.sendMessage(from, {
+        text: "*🍁 කරුණාකර view once message එකකට reply කරන්න.*"
       }, { quoted: message });
     }
 
-    const buffer = await match.quoted.download();
-    const mtype = match.quoted.mtype;
+    const buffer = await quoted.download();
+    const mtype = quoted.mtype;
     const options = { quoted: message };
 
-    let messageContent = {};
+    let content = {};
     switch (mtype) {
       case "imageMessage":
-        messageContent = {
+        content = {
           image: buffer,
-          caption: match.quoted.text || '',
-          mimetype: match.quoted.mimetype || "image/jpeg"
+          caption: quoted.text || '',
         };
         break;
       case "videoMessage":
-        messageContent = {
+        content = {
           video: buffer,
-          caption: match.quoted.text || '',
-          mimetype: match.quoted.mimetype || "video/mp4"
+          caption: quoted.text || '',
         };
         break;
       case "audioMessage":
-        messageContent = {
+        content = {
           audio: buffer,
           mimetype: "audio/mp4",
-          ptt: match.quoted.ptt || false
+          ptt: quoted.ptt || false
         };
         break;
       default:
-        return await client.sendMessage(from, {
-          text: "❌ Only image, video, and audio messages are supported"
+        return client.sendMessage(from, {
+          text: "❌ image, video, audio විතරක් පමණයි මෙතැන support වෙන්නෙ."
         }, { quoted: message });
     }
 
-    await client.sendMessage(from, messageContent, options);
-  } catch (error) {
-    console.error("vv Error:", error);
+    await client.sendMessage(from, content, options);
+
+  } catch (err) {
+    console.error("vv Error:", err);
     await client.sendMessage(from, {
-      text: "❌ Error fetching vv message:\n" + error.message
+      text: "❌ view once message එක ලබාගැනීමේදී දෝෂයක්:\n" + err.message
     }, { quoted: message });
   }
 });

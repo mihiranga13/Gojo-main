@@ -318,7 +318,7 @@ async (message, match) => {
 
 cmd({
     pattern: "mee",
-    fromMe: mode,
+    fromMe: "mode",
     onlyGroup: false,
     desc: "self tag",
     type: "group",

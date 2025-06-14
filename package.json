@@ -24,7 +24,7 @@
     "@xct007/frieren-scraper":"^0.0.2",
     "api-dylux":"latest",
     "async-g-i-s":"^1.4.0",
-    "axios":"^1.2.5",
+    "axios":"^1.10.0",
     "btch-downloader":"^2.0.9",
     "caliph-api":"^1.0.0",
     "crypto":"latest",

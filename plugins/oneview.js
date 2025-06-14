@@ -1,61 +1,77 @@
-/**
- * vv.js  |  GOJO-MD
- * --------------------------------------
- * Owner-only command to retrieve **View-Once** media
- * Usage :  reply to a view-once img / vid / audio   ➜   .vv
- */
-
 const { cmd } = require("../lib/command");
 
 cmd({
   pattern : "vv",
   alias   : ["viewonce", "retrieve"],
   react   : "🐳",
-  desc    : "Owner-only | Retrieve view-once image / video / audio",
+  desc    : "Owner-only | Retrieve View-Once media (image / video / audio)",
   category: "owner",
   filename: __filename
-}, async (conn, m, text, { from, isCreator, reply }) => {
+}, async (Void, m, text, { from, isCreator }) => {
   try {
-    /* ── owner check ───────────────────── */
+    /* 0️⃣ Owner check */
     if (!isCreator)
-      return reply("📛 මේක owner ට විතරයි.");
+      return Void.sendMessage(from, { text: "📛 මේක owner ට විතරයි." }, { quoted: m });
 
-    /* ── make sure user replied to view-once ─ */
-    const q = m.quoted;
-    if (!q || !q.isViewOnce)
-      return reply("🍁 කරුණාකර *view-once message* එකකට reply කරන්න.");
+    /* 1️⃣ Helper – return unified VO object */
+    const extractVO = (msg) => {
+      // Case-A: Baileys flag (easiest)
+      if (msg.quoted?.isViewOnce) return msg.quoted;
 
-    /* ── unlock the view-once flag ────────── */
-    q.message[q.mtype].viewOnce = false;
+      // Case-B: v2 structure (quotedMessage.viewOnceMessageV2)
+      let voRaw = msg.msg?.contextInfo?.quotedMessage?.viewOnceMessageV2;
+      if (voRaw) {
+        const tp = Object.keys(voRaw.message)[0];
+        return {
+          mtype : tp,
+          caption : voRaw.message[tp].caption || "",
+          download : () => Void.downloadAndSaveMediaMessage(voRaw.message[tp])
+        };
+      }
 
-    /* ── download media ───────────────────── */
-    const buffer = await q.download();
-    const cap    = q.text || "";
-    const sendOpt = { quoted: m };
+      // Case-C: v1 structure (quotedMessage.viewOnceMessage)
+      voRaw = msg.msg?.contextInfo?.quotedMessage?.viewOnceMessage;
+      if (voRaw) {
+        const tp = Object.keys(voRaw.message)[0];
+        return {
+          mtype : tp,
+          caption : voRaw.message[tp].caption || "",
+          download : () => Void.downloadAndSaveMediaMessage(voRaw.message[tp])
+        };
+      }
 
-    /* ── resend according to type ─────────── */
-    if (q.mtype === "imageMessage") {
-      await conn.sendMessage(from, { image: buffer, caption: cap }, sendOpt);
+      return null;
+    };
+
+    const vo = extractVO(m);
+    if (!vo) return Void.sendMessage(from,
+      { text: "🍁 කරුණාකර *View-Once* පණිවිඩයකට reply කරන්න." }, { quoted: m });
+
+    /* 2️⃣ Download & resend */
+    const file = await vo.download();
+    let out    = {};
+
+    switch (vo.mtype) {
+      case "imageMessage":
+        out = { image: { url: file }, caption: vo.caption };
+        break;
+      case "videoMessage":
+        out = { video: { url: file }, caption: vo.caption };
+        break;
+      case "audioMessage":
+        out = { audio: { url: file }, mimetype: "audio/mp4", ptt: false };
+        break;
+      default:
+        return Void.sendMessage(from,
+          { text: "❌ Image / Video / Audio විතරක් පමණයි support." }, { quoted: m });
     }
-    else if (q.mtype === "videoMessage") {
-      await conn.sendMessage(from, { video: buffer, caption: cap }, sendOpt);
-    }
-    else if (q.mtype === "audioMessage") {
-      await conn.sendMessage(from, {
-        audio: buffer,
-        mimetype: "audio/mp4",
-        ptt: q.ptt || false
-      }, sendOpt);
-    }
-    else {
-      return reply("❌ Image / Video / Audio විතරක් support වෙන්නෙ.");
-    }
 
-    /* ── success react ───────────────────── */
-    await conn.sendMessage(from, { react: { text: "✅", key: m.key } });
+    await Void.sendMessage(from, out, { quoted: m });
+    await Void.sendMessage(from, { react: { text: "✅", key: m.key } });
 
   } catch (err) {
-    console.error("vv error ➜", err);
-    reply("❌ Error: " + err.message);
+    console.error("vv error →", err);
+    Void.sendMessage(from,
+      { text: "❌ දෝෂයක්: " + err.message }, { quoted: m });
   }
 });

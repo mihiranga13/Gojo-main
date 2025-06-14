@@ -53,7 +53,7 @@ cmd({
         mediaType: 1,
         renderLargerThumbnail: true,
         showAdAttribution: true,
-        sourceUrl: "https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png"
+        
       }
     }
   }, { quoted: m });

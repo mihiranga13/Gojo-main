@@ -1,77 +1,61 @@
-const { cmd } = require("../lib/command");
+/*
+Dont Remove Credit;
+        CREDIT BY 𝐒𝐔𝐋𝐀-𝐌𝐃 OWNER SULAKSHA MADARA 
+        SUPPORT - https://whatsapp.com/channel/0029Vb65iOZKwqSNKecV8V07
+        
+ Credit Remove කරන්න තරම් තිරිසනෙක් වෙන්න එපා ඕයි ☹️
+*/
+
+const axios = require('axios');
+const config = require('../settings');
+const { cmd, commands } = require('../lib/command');
+
+const fs = require("fs");
 
 cmd({
-  pattern : "vv",
-  alias   : ["viewonce", "retrieve"],
-  react   : "🐳",
-  desc    : "Owner-only | Retrieve View-Once media (image / video / audio)",
-  category: "owner",
-  filename: __filename
-}, async (Void, m, text, { from, isCreator }) => {
-  try {
-    /* 0️⃣ Owner check */
-    if (!isCreator)
-      return Void.sendMessage(from, { text: "📛 මේක owner ට විතරයි." }, { quoted: m });
+    pattern: "vv",
+    react: "🛸",
+    alias: ["retrive", "viewonce"],
+    desc: "Fetch and resend a ViewOnce message content (image/video/voice).",
+    category: "misc",
+    use: "<query>",
+    filename: __filename
+}, async (conn, mek, m, { from, reply }) => {
+    try {
+        if (!m.quoted) return reply("Please reply to a ViewOnce message.");
 
-    /* 1️⃣ Helper – return unified VO object */
-    const extractVO = (msg) => {
-      // Case-A: Baileys flag (easiest)
-      if (msg.quoted?.isViewOnce) return msg.quoted;
+        const mime = m.quoted.type;
+        let ext, mediaType;
+        
+        if (mime === "imageMessage") {
+            ext = "jpg";
+            mediaType = "image";
+        } else if (mime === "videoMessage") {
+            ext = "mp4";
+            mediaType = "video";
+        } else if (mime === "audioMessage") {
+            ext = "mp3";
+            mediaType = "audio";
+        } else {
+            return reply("Unsupported media type. Please reply to an image, video, or audio message.");
+        }
 
-      // Case-B: v2 structure (quotedMessage.viewOnceMessageV2)
-      let voRaw = msg.msg?.contextInfo?.quotedMessage?.viewOnceMessageV2;
-      if (voRaw) {
-        const tp = Object.keys(voRaw.message)[0];
-        return {
-          mtype : tp,
-          caption : voRaw.message[tp].caption || "",
-          download : () => Void.downloadAndSaveMediaMessage(voRaw.message[tp])
-        };
-      }
+        var buffer = await m.quoted.download();
+        var filePath = `${Date.now()}.${ext}`;
 
-      // Case-C: v1 structure (quotedMessage.viewOnceMessage)
-      voRaw = msg.msg?.contextInfo?.quotedMessage?.viewOnceMessage;
-      if (voRaw) {
-        const tp = Object.keys(voRaw.message)[0];
-        return {
-          mtype : tp,
-          caption : voRaw.message[tp].caption || "",
-          download : () => Void.downloadAndSaveMediaMessage(voRaw.message[tp])
-        };
-      }
+        fs.writeFileSync(filePath, buffer); 
 
-      return null;
-    };
+        let mediaObj = {};
+        mediaObj[mediaType] = fs.readFileSync(filePath);
 
-    const vo = extractVO(m);
-    if (!vo) return Void.sendMessage(from,
-      { text: "🍁 කරුණාකර *View-Once* පණිවිඩයකට reply කරන්න." }, { quoted: m });
+        await conn.sendMessage(m.chat, mediaObj);
 
-    /* 2️⃣ Download & resend */
-    const file = await vo.download();
-    let out    = {};
+        fs.unlinkSync(filePath);
 
-    switch (vo.mtype) {
-      case "imageMessage":
-        out = { image: { url: file }, caption: vo.caption };
-        break;
-      case "videoMessage":
-        out = { video: { url: file }, caption: vo.caption };
-        break;
-      case "audioMessage":
-        out = { audio: { url: file }, mimetype: "audio/mp4", ptt: false };
-        break;
-      default:
-        return Void.sendMessage(from,
-          { text: "❌ Image / Video / Audio විතරක් පමණයි support." }, { quoted: m });
+    } catch (e) {
+        console.log("Error:", e);
+        reply("An error occurred while fetching the ViewOnce message.", e);
     }
-
-    await Void.sendMessage(from, out, { quoted: m });
-    await Void.sendMessage(from, { react: { text: "✅", key: m.key } });
-
-  } catch (err) {
-    console.error("vv error →", err);
-    Void.sendMessage(from,
-      { text: "❌ දෝෂයක්: " + err.message }, { quoted: m });
-  }
 });
+
+/*Plugin වටේ යවන්න එපා ඈ*/

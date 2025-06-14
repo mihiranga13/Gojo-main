@@ -1,5 +1,5 @@
 const { cmd } = require("../lib/command");
-const config = require("../setting");
+const config = require("../settings");
 const fs = require("fs");
 
 cmd({

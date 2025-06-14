@@ -1,42 +1,44 @@
 const axios = require('axios');
-const { cmd, tlang } = require('../lib/command');
-const { WEATHER_API_KEY } = require('../settings'); // API Key එක මෙතනින් යනවා
-
+const config = require('../settings');
+const { cmd, commands } = require('../lib/command');
 cmd({
     pattern: "weather",
-    category: "search",
-    react: "⛅",
-    desc: "නගරයක වැසි තොරතුරු ලබා දේ",
-    use: "<නගරය>",
+    desc: "🌤 Get weather information for a location",
+    react: "🌤",
+    category: "other",
     filename: __filename
 },
-async (Void, citel, text) => {
-    if (!text) return citel.reply("🌍 කරුණාකර නගරයක් සඳහන් කරන්න.\nඋදා: `.weather Colombo`");
-
-    const city = String(text).trim(); // ⚠️ මෙහිදි error එක විසඳනවා
-
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${WEATHER_API_KEY}&lang=si`;
-
+async (conn, mek, m, { from, q, reply }) => {
     try {
+        if (!q) return reply("❗ *Give me a City😩👍* . Usage: .weather [city name]");
+        const apiKey = '2d61a72574c11c4f36173b627f8cb177'; 
+        const city = q;
+        const url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
         const response = await axios.get(url);
         const data = response.data;
-        const weather = data.weather[0];
+        const weather = `
+🌍 *Weather Information for ${data.name}, ${data.sys.country}* 
+💦 *Humidity*: ${data.main.humidity}%
+☁️ *Weather*: ${data.weather[0].main}
+🌫️ *Description*: ${data.weather[0].description}
+💨 *Wind Speed*: ${data.wind.speed} m/s
+> 🌡️ *Temperature*: ${data.main.temp}°C
+> 🌡️ *Feels Like*: ${data.main.feels_like}°C
+> 🌡️ *Min Temp*: ${data.main.temp_min}°C
+> 🌡️ *Max Temp*: ${data.main.temp_max}°C
+🔽 *Pressure*: ${data.main.pressure} hPa
 
-        let msg = `🌦️ *${data.name}, ${data.sys.country} නගරයේ කාලගුණය*\n\n`;
-        msg += `🌡️ උෂ්ණත්වය: ${data.main.temp}°C (ඇත් බවට හැඟෙන උෂ්ණත්වය: ${data.main.feels_like}°C)\n`;
-        msg += `💧 ආර්ද්‍රතාව: ${data.main.humidity}%\n`;
-        msg += `💨 සුළං වේගය: ${data.wind.speed} m/s\n`;
-        msg += `☁️ තත්ත්වය: ${weather.main} - ${weather.description}\n`;
-        msg += `🗺️ ස්ථාන ඛණ්ඩාංක: ${data.coord.lat}, ${data.coord.lon}`;
-
-        return citel.reply(msg);
-
-    } catch (error) {
-        if (error.response?.data?.cod === '404') {
-            return citel.reply("❌ නගරය සොයාගත නොහැක. නිවැරදි නාමයක් ලබාදෙන්න.");
+> *GOJO MD*
+`;
+        return reply(weather);
+    } catch (e) {
+        console.log(e);
+        if (e.response && e.response.status === 404) {
+            return reply("*🚫 City not found.*");
         }
-
-        console.error("Weather API Error:", error.response?.data || error);
-        return citel.reply("⚠️ කාලගුණ තොරතුරු ලබා ගැනීමට නොහැක. කරුණාකර පසුව උත්සාහ කරන්න.");
+        return reply("⚠️ *Sorry, Error 😓* .");
     }
 });
+
+
+//FOLLOW ME

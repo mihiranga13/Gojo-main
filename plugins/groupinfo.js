@@ -1,5 +1,5 @@
 const { cmd } = require("../lib/command");
-
+const config = require('../settings'); 
 cmd( { pattern: "ginfo", alias: ["groupinfo", "gcinfo"], category: "group", desc: "Show group information with photo", filename: __filename, }, async (client, message) => { if (!message.isGroup) { const reply = (text) => client.sendMessage(message.chat, { text }, { quoted: message }); return await reply("👥 This command works only in groups."); }
 
 const reply = (text) =>

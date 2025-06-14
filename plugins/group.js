@@ -7,7 +7,7 @@ const checkPermissions = async (message) => {
 };
 
 cmd({
-    pattern: 'ginfo ?(.*)',
+    pattern: 'ginfo',
     fromMe: true,
     desc: 'get group info',
     type: 'group',

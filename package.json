@@ -10,7 +10,6 @@
     "restart":"pm2 restart GOJO"},
   "dependencies":{
     "@adiwajshing/keyed-db":"^0.2.4",
-    "@adiwajshing/baileys": "github:@whiskeysockets/baileys",
     "@blackamda/telegram-image-url":"^1.0.0",
     "@bochilteam/scraper":"^4.0.22-alpha.0",
     "@distube/ytdl-core":"^4.13.5",

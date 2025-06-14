@@ -4,7 +4,7 @@ const { ytmp3 } = require("@vreden/youtube_scraper");
 
 cmd(
   {
-    pattern: "ong",
+    pattern: "song",
     react: "🎵",
     desc: "Download Song",
     category: "download",

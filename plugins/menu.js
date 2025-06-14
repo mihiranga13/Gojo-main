@@ -1,76 +1,60 @@
-const config = require('../settings');
-const { cmd } = require('../lib/command');
-const { runtime } = require('../lib/functions');
+const { cmd } = require("../lib/command");
+const config = require("../setting");
+const fs = require("fs");
 
 cmd({
   pattern: "menu",
-  react: "📜",
-  alias: ["panel", "help"],
-  desc: "Displays the main command menu",
+  alias: ["help", "commands"],
   category: "main",
-  filename: __filename
-}, async (robin, m, mek, { from, prefix, reply, pushName }) => {
+  desc: "The Ultimate Supirima Menu 🧠💠",
+  filename: __filename,
+}, async (conn, m, mdata, { pushName, prefix, isOwner, reply }) => {
+  const date = new Date().toLocaleDateString("en-US");
+  const time = new Date().toLocaleTimeString("en-US");
 
-  const menuText = `
-╭───────────────◆
-│  Hello, *${pushName}*!
-│  🤖 *GOJO MD MENU*
-╰───────────────◆
+  const msg = `
+╭━━〔 👋 *Hello ${pushName}!* 〕━━━╮
+┃
+┃ 📅 Date: ${date}
+┃ ⏰ Time: ${time}
+┃ 🧠 Status: *Online & Smart!*
+┃
+┃ 💠 *SUPIRIMA MENU CATEGORIES*
+┃
+┃ 🔍 Search Tools
+┃   ┗ ${prefix}ytsearch, ${prefix}film, ${prefix}anime
+┃ 📥 Downloaders
+┃   ┗ ${prefix}ytv, ${prefix}yta, ${prefix}igdl, ${prefix}tiktok
+┃ 🧩 AI / Chat
+┃   ┗ ${prefix}ai, ${prefix}gpt, ${prefix}bard
+┃ 🛠️ System
+┃   ┗ ${prefix}ping, ${prefix}runtime, ${prefix}uptime
+┃ 🎮 Fun / Tools
+┃   ┗ ${prefix}joke, ${prefix}quote, ${prefix}tts, ${prefix}photo
+┃ 👑 Owner Only
+┃   ┗ ${prefix}block, ${prefix}eval, ${prefix}update
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-🧩 *Owner Commands*
-├› ${prefix}mode [public/private]
-├› ${prefix}block @user
-├› ${prefix}unblock @user
-├› ${prefix}ban / unban
+🔘 _Type_ *${prefix}help command* _for specific command usage._
+🔗 GitHub: github.com/GOJO1999/GOJO-main
+`;
 
-🛠️ *Download Commands*
-├› ${prefix}video [yt link]
-├› ${prefix}yta [yt link]
-├› ${prefix}slanimeclub [anime name]
-├› ${prefix}film [movie name]
+  const thumbnail = fs.readFileSync("./media/gojo-menu.jpg"); // replace with your image path
 
-🧠 *Utility Commands*
-├› ${prefix}ping
-├› ${prefix}runtime
-├› ${prefix}script
-├› ${prefix}alive
-
-🖼️ *Group Management*
-├› ${prefix}kick @user
-├› ${prefix}add +94xxxxxxxxx
-├› ${prefix}promote @user
-├› ${prefix}demote @user
-├› ${prefix}gname [name]
-├› ${prefix}gpp [img]
-
-🎨 *Converter*
-├› ${prefix}sticker
-├› ${prefix}photo
-├› ${prefix}mp3
-├› ${prefix}mp4
-
-🔐 *Database Tools*
-├› ${prefix}getcase
-├› ${prefix}savecase
-├› ${prefix}delcase
-
-╭───────────────◆
-│ _🕒 Uptime:_ ${runtime(process.uptime())}
-╰───────────────◆
-  `.trim();
-
-  const buttons = [
-    { buttonId: `${prefix}owner`, buttonText: { displayText: '👤 Owner' }, type: 1 },
-    { buttonId: `${prefix}script`, buttonText: { displayText: '💻 Script' }, type: 1 },
-    { buttonId: `${prefix}ping`, buttonText: { displayText: '📶 Ping' }, type: 1 }
-  ];
-
-  const buttonMessage = {
-    text: menuText,
-    footer: `⚡ GOJO-MD BOT | Powered by @GOJO`,
-    buttons: buttons,
-    headerType: 1
-  };
-
-  await robin.sendMessage(from, buttonMessage, { quoted: mek });
+  await conn.sendMessage(m.chat, {
+    image: thumbnail,
+    caption: msg,
+    contextInfo: {
+      externalAdReply: {
+        title: "🔥 Supirima GOJO Menu System",
+        body: "Smart. Fast. Beautiful.",
+        thumbnail,
+        mediaType: 1,
+        renderLargerThumbnail: true,
+        showAdAttribution: true,
+        sourceUrl: "https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png"
+      }
+    }
+  }, { quoted: m });
 });

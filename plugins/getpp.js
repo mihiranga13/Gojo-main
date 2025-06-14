@@ -1,6 +1,6 @@
 const { cmd } = require('../lib/command'); 
 const fs = require('fs');    
-const config = require('../setting'); 
+const config = require('../settings'); 
 
 cmd({
     pattern: "getpp",

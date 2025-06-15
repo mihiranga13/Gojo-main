@@ -52,7 +52,7 @@ cmd({
                 if (userReply === "1") {
                     const sent = await conn.sendMessage(from, { text: "⏳ Downloading video..." }, { quoted: mek });
                     await conn.sendMessage(from, { video: { url: res.dl_link }, mimetype: "video/mp4", caption: res.title }, { quoted: mek });
-                    await conn.sendMessage(from, { text: "✅ Video sent!\nPowered by Chamindu", edit: sent.key });
+                    await conn.sendMessage(from, { text: "✅ Video sent!\nPowered by gojo md", edit: sent.key });
                 } else if (userReply === "2") {
                     const sent = await conn.sendMessage(from, { text: "⏳ Uploading document..." }, { quoted: mek });
                     await conn.sendMessage(from, { document: { url: res.dl_link }, fileName: `${res.title}.mp4`, mimetype: "video/mp4", caption: res.title }, { quoted: mek });

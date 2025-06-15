@@ -1,209 +1,247 @@
-const { cmd } = require('../lib/command');
-const axios = require('axios');
+const { cmd } = require("../lib/command");
+const axios = require("axios");
 
-// Function to get current date and time in +0530 timezone
+// ────────────────────────────────────────────────────────────
+// helpers
+// ────────────────────────────────────────────────────────────
+const TZ_OFFSET = 5.5 * 60 * 60 * 1000; // +05:30
+
 function getCurrentDateTime() {
-    const now = new Date();
-    const offset = 5.5 * 60 * 60 * 1000; // +0530 offset in milliseconds
-    const localTime = new Date(now.getTime() + offset);
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const day = days[localTime.getUTCDay()];
-    const date = localTime.toISOString().split('T')[0];
-    const time = localTime.toISOString().split('T')[1].split('.')[0];
-    return `${day}, ${date}, ${time} +0530`;
+  const now = new Date(Date.now() + TZ_OFFSET);
+  const days = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  return (
+    `${days[now.getUTCDay()]}, ` +
+    now.toISOString().replace("T", ", ").split(".")[0] +
+    " +0530"
+  );
 }
 
-// Function to search movies using CineSubz API
 async function searchMovies(query) {
-    const api = {
-        url: `https://cinesubz-api-zazie.vercel.app/api/search?q=${encodeURIComponent(query)}`,
-        name: "CineSubz",
-        parseResults: (data) => {
-            if (!data || !data.status || !data.result || !data.result.data || !Array.isArray(data.result.data)) {
-                throw new Error("Invalid response structure");
-            }
-            return data.result.data.map(item => ({
-                title: item.title || "Unknown Title",
-                link: item.link || "",
-                year: item.year || "N/A",
-            }));
-        },
-    };
-
-    let results = [];
-    let errorMessages = [];
-
-    try {
-        const response = await axios.get(api.url, { timeout: 10000 });
-        results = api.parseResults(response.data);
-        if (results.length === 0) {
-            errorMessages.push(`${api.name}: No results found`);
-        }
-    } catch (err) {
-        errorMessages.push(`${api.name}: ${err.message}`);
-    }
-
-    return { results: results.slice(0, 10), errors: errorMessages };
+  const url = `https://cinesubz-api-zazie.vercel.app/api/search?q=${encodeURIComponent(
+    query
+  )}`;
+  try {
+    const { data } = await axios.get(url, { timeout: 10_000 });
+    const list = data?.result?.data ?? [];
+    return list.slice(0, 10).map((m) => ({
+      title: m.title || "Unknown Title",
+      link: m.link || "",
+      year: m.year || "N/A",
+    }));
+  } catch (e) {
+    throw new Error(`CineSubz API error → ${e.message}`);
+  }
 }
 
-// Function to fetch movie details and download links
 async function getMovieDetails(movieUrl) {
-    const apiUrl = `https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(movieUrl)}`;
-    try {
-        const response = await axios.get(apiUrl, { timeout: 10000 });
-        const movieData = response.data.result.data;
-        if (!movieData) {
-            throw new Error("No movie data returned");
-        }
-        if (!movieData.dl_links || movieData.dl_links.length === 0) {
-            throw new Error("No download links found");
-        }
-        return {
-            title: movieData.title || "Unknown Title",
-            imdb: movieData.imdbRate || "N/A",
-            date: movieData.date || "N/A",
-            country: movieData.country || "N/A",
-            runtime: movieData.duration || "N/A",
-            image: movieData.image || "",
-            dl_links: movieData.dl_links.map(link => ({
-                quality: link.quality || "Unknown Quality",
-                size: link.size || "Unknown Size",
-                link: link.link || "",
-            })),
-        };
-    } catch (err) {
-        throw new Error(`Failed to fetch movie details: ${err.message}`);
-    }
+  const api = `https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(
+    movieUrl
+  )}`;
+  const { data } = await axios.get(api, { timeout: 10_000 });
+  const m = data?.result?.data;
+  if (!m) throw new Error("No movie data returned");
+  if (!Array.isArray(m.dl_links) || m.dl_links.length === 0)
+    throw new Error("No download links found");
+  return {
+    title: m.title || "Unknown Title",
+    imdb: m.imdbRate || "N/A",
+    date: m.date || "N/A",
+    country: m.country || "N/A",
+    runtime: m.duration || "N/A",
+    image: m.image || "",
+    dl_links: m.dl_links.map((l) => ({
+      quality: l.quality || "Unknown",
+      size: l.size || "Unknown",
+      link: l.link || "",
+    })),
+  };
 }
 
-// Command for movies
-cmd({
+// ────────────────────────────────────────────────────────────
+// state trackers
+// ────────────────────────────────────────────────────────────
+let cineConnRef = null;
+/** message-ID ➜ search results */
+const searchMap = {};
+/** message-ID ➜ movieData */
+const downloadMap = {};
+
+// initialise once
+if (!global.__cineReplyHandler) {
+  global.__cineReplyHandler = true;
+  const { setTimeout } = require("timers");
+  (function wait() {
+    if (!cineConnRef) return setTimeout(wait, 500);
+
+    cineConnRef.ev.on("messages.upsert", async ({ messages = [] }) => {
+      const msg = messages[0];
+      if (!msg?.message) return;
+
+      const text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        "";
+      if (!text.trim()) return;
+
+      const quotedId =
+        msg.message?.extendedTextMessage?.contextInfo?.stanzaId ?? null;
+
+      /* ---------- stage 1 : user replied to search results ---------- */
+      if (quotedId && searchMap[quotedId]) {
+        const idx = Number(text.trim());
+        const from = msg.key.remoteJid;
+        if (!(idx > 0 && idx <= searchMap[quotedId].length)) {
+          return cineConnRef.sendMessage(
+            from,
+            { text: "❌ *Invalid number. Try again!*" },
+            { quoted: msg }
+          );
+        }
+
+        // valid movie selected
+        const movie = searchMap[quotedId][idx - 1];
+        let movieData;
+        try {
+          cineConnRef.sendMessage(from, {
+            react: { text: "⏳", key: msg.key },
+          });
+          movieData = await getMovieDetails(movie.link);
+        } catch (e) {
+          return cineConnRef.sendMessage(
+            from,
+            { text: `❌ *${e.message}*` },
+            { quoted: msg }
+          );
+        }
+
+        // build DL-links message
+        let dlText = `🎥 *${movieData.title}*\n\n*Available Download Links:*\n`;
+        movieData.dl_links.forEach((l, i) => {
+          dlText += `*${i + 1}.* ${l.quality} – ${l.size}\n`;
+        });
+        dlText +=
+          "\n📩 *Reply with the number of the quality you want to download.*";
+
+        const sent = await cineConnRef.sendMessage(
+          from,
+          { text: dlText },
+          { quoted: msg }
+        );
+        downloadMap[sent.key.id] = movieData;
+        return;
+      }
+
+      /* ---------- stage 2 : user replied to download-links message ---------- */
+      if (quotedId && downloadMap[quotedId]) {
+        const idx = Number(text.trim());
+        const movieData = downloadMap[quotedId];
+        const from = msg.key.remoteJid;
+
+        if (!(idx > 0 && idx <= movieData.dl_links.length)) {
+          return cineConnRef.sendMessage(
+            from,
+            { text: "❌ *Invalid number. Try again!*" },
+            { quoted: msg }
+          );
+        }
+
+        const linkObj = movieData.dl_links[idx - 1];
+        await cineConnRef.sendMessage(from, {
+          react: { text: "⬇️", key: msg.key },
+        });
+
+        const caption = `
+🎬 *GOJO MD CINEMA*
+────────────────────────
+🎞 *Movie*   : _${movieData.title}_
+⭐ *IMDb*    : _${movieData.imdb}_
+📅 *Date*    : _${movieData.date}_
+🌍 *Country* : _${movieData.country}_
+⏳ *Runtime* : _${movieData.runtime}_
+────────────────────────
+© 2025 GOJO MD | Powered by Sayura`.trim();
+
+        await cineConnRef.sendMessage(
+          from,
+          {
+            document: { url: linkObj.link },
+            mimetype: "video/mp4",
+            fileName: `${movieData.title} - ${linkObj.quality}.mp4`,
+            caption,
+            contextInfo: {
+              externalAdReply: {
+                title: movieData.title,
+                body: "🎬 GOJO CINEMA",
+                mediaType: 1,
+                thumbnailUrl: movieData.image,
+                sourceUrl: movieData.image,
+                renderLargerThumbnail: true,
+              },
+            },
+          },
+          { quoted: msg }
+        );
+        await cineConnRef.sendMessage(from, {
+          react: { text: "✅", key: msg.key },
+        });
+      }
+    });
+  })();
+}
+
+// ────────────────────────────────────────────────────────────
+// main command
+// ────────────────────────────────────────────────────────────
+cmd(
+  {
     pattern: "cine",
     alias: ["subfilm"],
     react: "🎬",
     desc: "Search and download movies from CineSubz",
     category: "movie",
     filename: __filename,
-},
-async (conn, mek, m, { from, q, reply }) => {
+  },
+  async (conn, mek, m, { from, q, reply }) => {
     try {
-        // Step 1: Validate input query
-        if (!q) {
-            return await reply("*Please provide a movie name to search! (e.g., Deadpool)*");
-        }
+      cineConnRef = conn; // save for global handler
 
-        // Step 2: Search movies
-        const { results, errors } = await searchMovies(q);
-        if (results.length === 0) {
-            return await reply(`*No movies found for:* "${q}"\n${errors.join('\n')}\n*Please try a different search term.*`);
-        }
+      const query = q?.trim();
+      if (!query) {
+        return reply(
+          "*Please provide a movie name to search!*  (e.g. `.cine Deadpool`)"
+        );
+      }
 
-        // Step 3: Send search results to user
-        let resultsMessage = `✨ *GOJO MD MOVIE DOWNLOADER* ✨\n\n🎥 *Search Results for* "${q}" (Date: ${getCurrentDateTime()}):\n\n`;
-        results.forEach((result, index) => {
-            resultsMessage += `*${index + 1}.* ${result.title} (${result.year}) [CineSubz]\n🔗 Link: ${result.link}\n\n`;
-        });
-        resultsMessage += `\n📩 *Please reply with the number of the movie you want to download.*`;
+      // 1️⃣ search
+      const results = await searchMovies(query);
+      if (results.length === 0)
+        return reply(`*Nothing found for:* _${query}_`);
 
-        const sentMsg = await conn.sendMessage(from, { text: resultsMessage }, { quoted: mek });
-        const messageID = sentMsg.key.id;
+      // 2️⃣ send results
+      let msg = `✨ *GOJO MD MOVIE DOWNLOADER* ✨\n\n`;
+      msg += `🎥 *Search Results for* _"${query}"_ (${getCurrentDateTime()})\n\n`;
+      results.forEach((r, i) => {
+        msg += `*${i + 1}.* ${r.title} (${r.year})\n`;
+      });
+      msg +=
+        "\n📩 *Reply with the number of the movie you want to download.*";
 
-        // Step 4: Wait for user to select a movie
-        conn.addReplyTracker(messageID, async (mek, messageType) => {
-            if (!mek.message) return;
-            const from = mek.key.remoteJid;
-            const selectedNumber = parseInt(messageType.trim());
-            if (!isNaN(selectedNumber) && selectedNumber > 0 && selectedNumber <= results.length) {
-                const selectedMovie = results[selectedNumber - 1];
-
-                // Step 5: Fetch movie details
-                let movieData;
-                try {
-                    movieData = await getMovieDetails(selectedMovie.link);
-                } catch (err) {
-                    return await reply(`*Error fetching movie details:* ${err.message}\n*Try another movie or check the URL.*`);
-                }
-
-                // Step 6: Send available download links
-                let downloadMessage = `🎥 *${movieData.title}*\n\n*Available Download Links:*\n`;
-                movieData.dl_links.forEach((link, index) => {
-                    downloadMessage += `*${index + 1}.* ${link.quality} - ${link.size}\n🔗 Link: ${link.link}\n\n`;
-                });
-                downloadMessage += `\n📩 *Please reply with the number of the quality you want to download.*`;
-
-                const sentDownloadMsg = await conn.sendMessage(from, { text: downloadMessage }, { quoted: mek });
-                const downloadMessageID = sentDownloadMsg.key.id;
-
-                // Step 7: Wait for user to select a quality
-                conn.addReplyTracker(downloadMessageID, async (mek, downloadMessageType) => {
-                    if (!mek.message) return;
-                    const from = mek.key.remoteJid;
-                    const selectedQuality = parseInt(downloadMessageType.trim());
-                    if (!isNaN(selectedQuality) && selectedQuality > 0 && selectedQuality <= movieData.dl_links.length) {
-                        const selectedLink = movieData.dl_links[selectedQuality - 1];
-
-                        // Step 8: Send the movie as a document
-                        await conn.sendMessage(from, { react: { text: '⬇️', key: sentDownloadMsg.key } });
-
-                        let downloadMessag = `
-🎬 *GOJO MD CINEMA* 🎥  
-╔══════════════════════════╗  
-   Your Gateway to  
-    🎥 Entertainment 🎥  
-╚══════════════════════════╝  
-
-✨ 🎥 **🎞 Movie:** *${movieData.title}*  
-
-⭐ *IMDB Rating:* *${movieData.imdb}*  
-📅 *Release Date:* *${movieData.date}*  
-🌍 *Country:* *${movieData.country}*  
-⏳ *Duration:* *${movieData.runtime}*  
-
-╔═════ஜ۩۞۩ஜ═════╗  
-© 2025 *GOJO MD*  
-🚀 *POWERED BY sayura*  
-📡 _Stay Connected. Stay Entertained!_  
-╚═════ஜ۩۞۩ஜ═════╝`;
-
-                        await conn.sendMessage(from, { react: { text: '⬆️', key: sentDownloadMsg.key } });
-
-                        await conn.sendMessage(from, {
-                            document: { url: selectedLink.link },
-                            mimetype: "video/mp4",
-                            fileName: `${movieData.title} - ${selectedLink.quality}.mp4`,
-                            caption: downloadMessag,
-                            contextInfo: {
-                                mentionedJid: [],
-                                groupMentions: [],
-                                forwardingScore: 999,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterName: "© GOJO MD 💚",
-                                    serverMessageId: 999,
-                                },
-                                externalAdReply: {
-                                    title: movieData.title,
-                                    body: '🎬 *GOJO CINEMA* 🎥',
-                                    mediaType: 1,
-                                    sourceUrl: selectedMovie.link,
-                                    thumbnailUrl: movieData.image,
-                                    renderLargerThumbnail: true,
-                                    showAdAttribution: true,
-                                },
-                            },
-                        }, { quoted: mek });
-
-                        await conn.sendMessage(from, { react: { text: '✅', key: sentDownloadMsg.key } });
-                    } else {
-                        await reply("Invalid selection. Please reply with a valid number.");
-                    }
-                });
-            } else {
-                await reply("Invalid selection. Please reply with a valid number.");
-            }
-        });
+      const sent = await conn.sendMessage(from, { text: msg }, { quoted: mek });
+      searchMap[sent.key.id] = results;
     } catch (e) {
-        console.error("Error during movie download:", e.message, e.stack);
-        reply(`*An error occurred while processing your request:* ${e.message}\n*Please try again later or use a different search term.*`);
+      console.error(e);
+      reply(
+        `*An error occurred while processing your request:* ${e.message}\n` +
+          "*Try again later.*"
+      );
     }
-});
+  }
+);

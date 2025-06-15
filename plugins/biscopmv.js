@@ -1,4 +1,4 @@
-const l = console.log;
+
 const config = require('../settings');
 const { cmd } = require('../lib/command');
 const axios = require('axios');
@@ -40,10 +40,10 @@ rows: srh
 }	  
 ]
 const listMessage = {
-text: `*_BAISCOPES MOVIE SEARCH RESULT 🎬_*
+text: `*_GOJO BAISCOPES MOVIE SEARCH RESULT 🎬_*
 
 *\`Input :\`* ${q}`,
-footer: config.FOOTER,
+footer: settings.FOOTER,
 title: 'baiscopes.lk results',
 buttonText: '*Reply Below Number 🔢*',
 sections
@@ -106,7 +106,7 @@ const buttonMessage = {
  
 image: {url: im.replace("-150x150", "") },	
   caption: msg,
-  footer: config.FOOTER,
+  footer: settings.FOOTER,
   buttons: rows,
   headerType: 4
 }
@@ -152,7 +152,8 @@ cmd({
             caption: `*🎬 Name :* ${dat}\n\n`,
             mimetype: "video/mp4",
             jpegThumbnail: await (await fetch(botimg)).buffer(),
-            fileName: `${dat}.mp4`
+            fileName: `${dat}.mp4`,
+	    footer: settings.FOOTER
         });
 
         await conn.sendMessage(from, { react: { text: '✔️', key: mek.key } });

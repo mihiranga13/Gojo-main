@@ -61,7 +61,7 @@ cmd({
       filmList += `   ⭐ IMDB: ${film.imdb}\n`;
       filmList += `   📅 Year: ${film.year}\n\n`;
     });
-    filmList += `🔢 Select a number to choose\n❌ Reply 'done' to cancel`;
+    filmList += `🔢 Select a number to choose\n💡 Reply 'done' to cancel`;
 
     const movieListMessage = await conn.sendMessage(from, {
       image: { url: films[0].image },
@@ -143,7 +143,7 @@ cmd({
         downloadLinks.forEach(dl => {
           qualityList += `${dl.number}. *${dl.quality}* (${dl.size})\n`;
         });
-        qualityList += `\n🔢 Reply with number\n❌ Reply 'done' to stop`;
+        qualityList += `\n🔢 Reply with number\n💡 Reply 'done' to stop`;
 
         const qualityMsg = await conn.sendMessage(from, {
           image: { url: downloadData.movie.thumbnail || selectedFilm.image },

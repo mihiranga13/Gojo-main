@@ -1,166 +1,138 @@
+/*  baiscopes commands – search  ➜  info/buttons  ➜  direct download  */
 
-const config = require('../settings');
-const { cmd } = require('../lib/command');
 const axios = require('axios');
-const NodeCache = require('node-cache');
+const { cmd } = require('../lib/command');
+const { fetchJson } = require('../lib/functions');
+const config = require('../settings');
 
+/* ---------- .baiscopes ------------------------------------------------ */
 cmd({
-    pattern: "baiscopes",	
+    pattern: 'baiscopes',
     react: '🔎',
-    category: "movie",
-    desc: "Baiscopes.lk movie search",
-    use: ".baiscopes 2025",
-    
+    category: 'movie',
+    desc: 'Baiscopes.lk movie search',
+    use: '.baiscopes <keyword>',
     filename: __filename
-},
-async (conn, m, mek, { from, isPre, q, prefix, isMe,isSudo, isOwner, reply }) => {
-try{
+}, async (conn, m, mek, { from, q, prefix, reply }) => {
+    if (!q) return reply('*please give me text !..*');
 
+    const res = await fetchJson(
+        `https://darksadas-yt-baiscope-search.vercel.app/?query=${encodeURIComponent(q)}`
+    );
 
- if(!q) return await reply('*please give me text !..*')
-let url = await fetchJson(`https://darksadas-yt-baiscope-search.vercel.app/?query=${q}`)
-
- if (!url || !url.data || url.data.length === 0) 
-	{
-		await conn.sendMessage(from, { react: { text: '❌', key: mek.key } });
-            return await conn.sendMessage(from, { text: '*No results found ❌*' }, { quoted: mek });
-        }
-var srh = [];  
-for (var i = 0; i < url.data.length; i++) {
-srh.push({
-title: url.data[i].title,
-description: '',
-rowId: prefix + `bdl ${url.data[i].link}&${url.data[i].year}`
-});
-}
-
-const sections = [{
-title: "baiscopes.lk results",
-rows: srh
-}	  
-]
-const listMessage = {
-text: `*_GOJO BAISCOPES MOVIE SEARCH RESULT 🎬_*
-
-*\`Input :\`* ${q}`,
-footer: settings.FOOTER,
-title: 'baiscopes.lk results',
-buttonText: '*Reply Below Number 🔢*',
-sections
-}
-await conn.listMessage(from, listMessage,mek)
-} catch (e) {
-    console.log(e)
-  await conn.sendMessage(from, { text: '🚩 *Error !!*' }, { quoted: mek } )
-}
-})
-cmd({
-    pattern: "bdl",	
-    react: '🎥',
-     desc: "moive downloader",
-    filename: __filename
-},
-async (conn, m, mek, { from, q, isMe, isSudo, isOwner, prefix, reply }) => {
-try{
-
-    
-  const urll = q.split("&")[0]
-const im = q.split("&")[1]
-  
-let sadas = await fetchJson(`https://darksadas-yt-baiscope-info.vercel.app/?url=${urll}&apikey=pramashi`)
-let msg = `*☘️ 𝗧ɪᴛʟᴇ ➮* *_${sadas.data.title   || 'N/A'}_*
-
-*📅 𝗥ᴇʟᴇꜱᴇᴅ ᴅᴀᴛᴇ ➮* _${sadas.data.date   || 'N/A'}_
-*💃 𝗥ᴀᴛɪɴɢ ➮* _${sadas.data.imdb  || 'N/A'}_
-*⏰ 𝗥ᴜɴᴛɪᴍᴇ ➮* _${sadas.data.runtime   || 'N/A'}_
-*💁‍♂️ 𝗦ᴜʙᴛɪᴛʟᴇ ʙʏ ➮* _${sadas.data.subtitle_author   || 'N/A'}_
-*🎭 𝗚ᴇɴᴀʀᴇꜱ ➮* ${sadas.data.genres.join(', ')   || 'N/A'}
-`
-
-if (sadas.length < 1) return await conn.sendMessage(from, { text: 'erro !' }, { quoted: mek } )
-
-var rows = [];  
-
-rows.push({
-      buttonId: prefix + `bdetails ${urll}&${im}`, buttonText: {displayText: 'Details send'}, type: 1}
-
-);
-	
-  sadas.dl_links.map((v) => {
-	rows.push({
-        buttonId: prefix + `cdl ${im}±${v.link}±${sadas.data.title}
-	
-	*\`[ ${v.quality} ]\`*`,
-        buttonText: { displayText: `${v.size} - ${v.quality}` },
-        type: 1
-          }
-		 
-		 
-		 );
-        })
-
-
-
-  
-const buttonMessage = {
- 
-image: {url: im.replace("-150x150", "") },	
-  caption: msg,
-  footer: settings.FOOTER,
-  buttons: rows,
-  headerType: 4
-}
-return await conn.buttonMessage(from, buttonMessage, mek)
-} catch (e) {
-    console.log(e)
-  await conn.sendMessage(from, { text: '🚩 *Error !!*' }, { quoted: mek } )
-}
-})
-cmd({
-    pattern: "cdl",
-    react: "⬇️",
-    dontAddCommandList: true,
-    filename: __filename
-}, async (conn, mek, m, { from, q, isMe, reply }) => {
-    
-    if (!q) {
-        return await reply('*Please provide a direct URL!*');
+    if (!res?.data?.length) {
+        await conn.sendMessage(from, { react: { text: '❌', key: mek.key } });
+        return conn.sendMessage(from, { text: '*No results found ❌*' }, { quoted: mek });
     }
 
+    const rows = res.data.map(v => ({
+        title: v.title,
+        description: '',
+        rowId: `${prefix}bdl ${v.link}&${v.img}`  // pass info-url & poster
+    }));
+
+    const listMessage = {
+        text: `*_BAISCOPES MOVIE SEARCH RESULT 🎬_*\n\n*\`Input :\`* ${q}`,
+        footer: config.FOOTER,
+        title: 'baiscopes.lk results',
+        buttonText: '*Reply Below Number 🔢*',
+        sections: [{ title: 'baiscopes.lk results', rows }]
+    };
+
+    await conn.listMessage(from, listMessage, mek);
+});
+
+/* ---------- .bdl  (movie info & quality buttons) ---------------------- */
+cmd({
+    pattern: 'bdl',
+    react: '🎥',
+    desc: 'movie downloader',
+    filename: __filename
+}, async (conn, m, mek, { from, q, prefix, reply }) => {
     try {
-        const datae = q.split("±")[0];
-        const datas = q.split("±")[1];
-        const dat = q.split("±")[2];
+        const [infoUrl, poster] = q.split('&');
+        const info = await fetchJson(
+            `https://darksadas-yt-baiscope-info.vercel.app/?url=${infoUrl}&apikey=pramashi`
+        );
 
-        let sadas = await fetchJson(`https://darksadas-yt-baiscope-dl.vercel.app/?url=${datas}&apikey=pramashi`);
+        if (!info?.data) return reply('*Error fetching info*');
 
-        if (!sadas || !sadas.data || !sadas.data.dl_link || !sadas.data.dl_link.includes('https://drive.baiscopeslk')) {
+        const d = info.data;
+        const caption = [
+            `*☘️ 𝗧ɪᴛʟᴇ ➮* _${d.title || 'N/A'}_`,
+            `*📅 𝗥ᴇʟᴇᴀꜱᴇ ᴅᴀᴛᴇ ➮* _${d.date || 'N/A'}_`,
+            `*💃 𝗜ᴍᴅʙ ➮* _${d.imdb || 'N/A'}_`,
+            `*⏰ 𝗥ᴜɴᴛɪᴍᴇ ➮* _${d.runtime || 'N/A'}_`,
+            `*💁‍♂️ 𝗦ᴜʙ ʙʏ ➮* _${d.subtitle_author || 'N/A'}_`,
+            `*🎭 𝗚ᴇɴʀᴇꜱ ➮* ${Array.isArray(d.genres) ? d.genres.join(', ') : 'N/A'}`
+        ].join('\n');
+
+        const buttons = [
+            {
+                buttonId: `${prefix}bdetails ${infoUrl}&${poster}`,
+                buttonText: { displayText: 'Details send' },
+                type: 1
+            },
+            ...info.dl_links.map(v => ({
+                buttonId: `${prefix}cdl ${poster}±${v.link}±${d.title}`,
+                buttonText: { displayText: `${v.size} - ${v.quality}` },
+                type: 1
+            }))
+        ];
+
+        const msg = {
+            image: { url: poster.replace('-150x150', '') },
+            caption,
+            footer: config.FOOTER,
+            buttons,
+            headerType: 4
+        };
+
+        await conn.buttonMessage(from, msg, mek);
+    } catch (e) {
+        console.log(e);
+        reply('🚩 *Error !!*');
+    }
+});
+
+/* ---------- .cdl  (direct drive link ➜ send) -------------------------- */
+cmd({
+    pattern: 'cdl',
+    react: '⬇️',
+    dontAddCommandList: true,
+    filename: __filename
+}, async (conn, mek, m, { from, q, reply }) => {
+    if (!q) return reply('*Please provide a direct URL!*');
+
+    try {
+        const [poster, driveUrl, title] = q.split('±');
+
+        const dl = await fetchJson(
+            `https://darksadas-yt-baiscope-dl.vercel.app/?url=${driveUrl}&apikey=pramashi`
+        );
+
+        const gDrive = dl?.data?.dl_link?.trim();
+        if (!gDrive?.startsWith('https://drive.baiscopeslk')) {
             console.log('Invalid input:', q);
-            return await reply('*❗ Sorry, this download url is incorrect. Please choose another number.*');
+            return reply('*❗ Sorry, this download url is incorrect. Please choose another number.*');
         }
-
-        const mediaUrl = sadas.data.dl_link.trim();
-        const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
-        const mediaBuffer = Buffer.from(response.data, 'binary');
-        const botimg = `${datae}`;
 
         await conn.sendMessage(from, { react: { text: '⬆️', key: mek.key } });
         await conn.sendMessage(from, { text: '*Uploading your movie..⬆️*' });
 
-        await conn.sendMessage(config.JID || from, { 
-            document: { url: mediaUrl },
-            caption: `*🎬 Name :* ${dat}\n\n`,
-            mimetype: "video/mp4",
-            jpegThumbnail: await (await fetch(botimg)).buffer(),
-            fileName: `${dat}.mp4`,
-	    footer: settings.FOOTER
+        await conn.sendMessage(config.JID || from, {
+            document: { url: gDrive },
+            caption: `*🎬 Name :* ${title}\n`,
+            mimetype: 'video/mp4',
+            jpegThumbnail: await (await axios.get(poster, { responseType: 'arraybuffer' })).data,
+            fileName: `${title}.mp4`
         });
 
         await conn.sendMessage(from, { react: { text: '✔️', key: mek.key } });
-        await conn.sendMessage(from, { text: `*Movie sent successfully to JID ${config.JID} ✔*` }, { quoted: mek });
+        await conn.sendMessage(from, { text: `*Movie sent successfully ✔*` }, { quoted: mek });
 
-    } catch (error) {
-        console.error('Error fetching or sending:', error);
-        await conn.sendMessage(from, { text: "*Error fetching this moment. Retry now ❗*" }, { quoted: mek });
+    } catch (e) {
+        console.error('Error fetching or sending:', e);
+        reply('*Error fetching this moment. Retry now ❗*');
     }
 });

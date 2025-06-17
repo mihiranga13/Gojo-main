@@ -1,5 +1,5 @@
 
-const config = require('../settings')
+const settings = require('../settings')
 const {cmd , commands} = require('../lib/command')
 const os = require("os")
 const {runtime} = require('../lib/functions')

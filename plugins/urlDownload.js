@@ -5,7 +5,7 @@ cmd({
     pattern: "download",
     alias: ["downurl"],
     use: '.yts gojo md whatsapp bot',
-    react: "📁",
+    react: "🔰",
     desc: "Search and get details from youtube.",
     category: "search",
     filename: __filename

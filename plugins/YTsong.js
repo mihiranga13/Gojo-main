@@ -80,7 +80,7 @@ cmd(
           : durationParts[0] * 60 + durationParts[1];
 
       if (totalSeconds > 1800) {
-        return reply("⏱️ audio limit is 30 minitues");
+        return reply("⏱️ audio limit is 180 minitues");
       }
 
       // Send audio file

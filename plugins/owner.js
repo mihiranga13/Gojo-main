@@ -2,6 +2,18 @@
 const settings = require('../settings')
 const {cmd , commands} = require('../lib/command')
 const os = require("os")
+const fs                = require('fs')
+const path              = require('path')
+const saveSettings = () => {
+  try {
+    fs.writeFileSync(
+      path.join(__dirname, '..', 'settings.json'),
+      JSON.stringify(settingsStorage, null, 2)
+    )
+  } catch (e) {
+    console.error('⚠️  Settings save error:', e)
+  }
+}
 const {runtime} = require('../lib/functions')
 
 cmd({
@@ -163,193 +175,150 @@ reply(`${e}`)
 //________Settings_________
 
 cmd({
-    pattern: "settings",
-    alias: ["setting","st"],
-    desc: "restart the bot",
-    category: "owner",
-    filename: __filename
-},
-async(conn, mek, m,{from, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply}) => {
-try{
+  pattern : 'settings',
+  alias   : ['setting', 'st'],
+  desc    : 'Show settings menu',
+  category: 'owner',
+  filename: __filename,
+}, async (conn, mek, m, { from, isOwner, reply }) => {
 
-    if (!isOwner) return reply("*📛 ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ!*");
-let cap = `
-┏━┫ *Gojo-ᴍᴅ-ꜱᴇᴛᴛɪɴɢꜱ⚬* ┣━✾
-┃            *Gojo  ✻  Md*
-┻
-*ᴘʀᴇꜰɪx ➭* _${settings.PREFIX}_
-*ᴍᴏᴅᴇ ➭* _${settings.MODE}_
-*ᴠᴏɪᴄᴇ_ʀᴇᴘʟʏ ➭* _${settings.AUTO_VOICE}_
-*ᴀᴜᴛᴏ_ꜱᴛɪᴄᴋᴇʀ ➭* _${settings.AUTO_STICKER}_
-*ᴀᴜᴛᴏ_ʀᴇᴀᴅ_ꜱᴛᴀᴛᴜꜱ ➭* _${settings.AUTO_READ_STATUS}_
-*ᴀᴜᴛᴏ_ꜱᴛᴀᴛᴜꜱ_ʀᴇᴀᴄᴛ ➭* _${settings.AUTO_STATUS_REACT}_
-*ᴀᴜᴛᴏ_ꜱᴛᴀᴛᴜꜱ_ʀᴇᴘʟʏ ➭* _${settings.AUTO_STATUS_REPLY}_
-*ꜱᴛᴀᴛᴜꜱ_ʀᴇᴘʟʏ_ᴍꜱɢ ➭ ${settings.STATUS_REPLY_MSG}
-*ᴀᴜᴛᴏ_ʀᴇᴀᴄᴛ ➭* _${settings.AUTO_REACT}_
-*ᴀᴜᴛᴏ_ʀᴇᴀᴅ_ᴍꜱɢ ➭* _${settings.READ_MESSAGE}_
-*ꜰᴀᴋᴇ_ʀᴇᴄᴏʀᴅɪɴɢ ➭* _${settings.FAKE_RECORDING}_
-*ᴀᴜᴛᴏ_ᴛʏᴘɪɴɢ ➭* _${settings.AUTO_TYPING}_
-*ᴀɴᴛɪ_ʙᴀᴅ_ᴡᴏʀᴅ ➭* _${settings.ANTI_BAD}_
-*ᴀɴᴛɪ_ʟɪɴᴋ ➭* _${settings.ANTI_LINK}_
-*ᴀɴᴛɪ_ᴅᴇʟᴇᴛᴇ ➭* _${settings.ANTI_DELETE}_
-*ᴀɴᴛɪ_ᴄᴀʟʟ ➭* _${settings.ANTI_CALL}_
-*ɪɴʙᴏx_ʙʟᴏᴄᴋ ➭* _${settings.INBOX_BLOCK}_
-*ᴀʟᴡᴀʏꜱ_ᴏɴʟɪɴᴇ ➭* _${settings.ALWAYS_ONLINE}_
+  if (!isOwner) return reply('📛 *Only owner can use this command!*')
 
-type *${settings.PREFIX}set* command\nsee how to change your settings
+  const menu = `
+*_⚙️ GOJO-MD SETTINGS ⚙️_*
 
-> Gojo-ᴍᴅ ✻
-`
+🔢 *Reply with the number to change a setting*
 
-await conn.sendMessage(from,{image: {url: `https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png`},caption: cap,
-contextInfo: {
-                mentionedJid: ['94743826406@s.whatsapp.net'], // specify mentioned JID(s) if any
-                groupMentions: [],
-                forwardingScore: 1,
-                isForwarded: true,
-                forwardedNewsletterMessageInfo: {
-                    
-                    newsletterName: "Gojo-ᴍᴅ ✻",
-                    serverMessageId: 999
-                }            
-            }
-     }, {quoted: mek});
-     
-}catch(e){
-console.log(e)
-reply(`${e}`)
-}
+\`\`\`
+🌏 WORK_TYPE
+1.1  PUBLIC      1.2  PRIVATE
+1.3  GROUP_ONLY  1.4  INBOX_ONLY
+
+👀 AUTO_STATUS_READ
+2.1  ON   2.2  OFF
+
+🎙 AUTO_VOICE
+3.1  ON   3.2  OFF
+
+💦 AUTO_MSG_READ
+4.1  ON   4.2  OFF
+
+⚡ AUTO_RECORDING
+5.1  ON   5.2  OFF
+
+🎯 AUTO_TYPING
+6.1  ON   6.2  OFF
+
+🍕 READ_ONLY_COMMANDS
+7.1  ON   7.2  OFF
+
+🚫 AUTO_BLOCK
+8.1  ON   8.2  OFF
+
+☎ ANTI_CALL
+9.1  ON   9.2  OFF
+
+✨ AUTO_REACT
+10.1 ON   10.2 OFF
+
+👾 AI_CHAT
+11.1 ON   11.2 OFF
+
+🚯 ANTI_DELETE
+12.1 ON   12.2 OFF
+
+🪀 ANTI_LINK
+13.1 ON   13.2 OFF
+
+🤖 ANTI_BOT
+14.1 ON   14.2 OFF
+
+💢 ANTI_BAD
+15.1 ON   15.2 OFF
+\`\`\`
+
+_Example:_ *reply 8.1*  →  AUTO_BLOCK = ON
+  `.trim()
+
+  await conn.sendMessage(from, { text: menu }, { quoted: mek })
+
+  // mark this user as “waiting for a settings code”
+  global.__settingSession = global.__settingSession || {}
+  global.__settingSession[mek.key.participant || from] = true
 })
 
-//SET
+/* ------------------------------------------------- #2 reply handler */
 cmd({
-    pattern: "set",
-    alias: ["var","allvar"],
-    desc: "restart the bot",
-    category: "owner",
-    filename: __filename
+  // empty pattern – this will run for every non-command message
+  only: 'text'
 },
-async(conn, mek, m,{from, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply}) => {
-try{
+async (conn, mek, m, { body, from, sender, isOwner }) => {
 
-    if (!isOwner) return reply("*📛 ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ!*");
-let cap = `
-┏━┫ *⚬Gojo-ᴍᴅ-ꜱᴇᴛᴛɪɴɢꜱ⚬* ┣━✾
-┃            *Gojo  ✻  Md*
-┻
-╭━━━━━━━━━━━━━━━
-*ᴘʀᴇꜰɪx ➭* _${settings.PREFIX}_
-* _${settings.PREFIX}prefix \ ? ,_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴍᴏᴅᴇ ➭* _${settings.MODE}_
-* _${settings.PREFIX}mode public_
-* _${settings.PREFIX}mode private_
-* _${settings.PREFIX}mode group_
-* _${settings.PREFIX}mode inbox_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴠᴏɪᴄᴇ_ʀᴇᴘʟʏ ➭* _${settings.AUTO_VOICE}_
-* _${settings.PREFIX}
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ʀᴇᴘʟʏ ➭* _${settings.AUTO_REPLY}_
-* _${settings.PREFIX}autoreply on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ꜱᴛɪᴄᴋᴇʀ ➭* _${settings.AUTO_STICKER}_
-* _${settings.PREFIX}autosticker on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ʀᴇᴀᴅ_ꜱᴛᴀᴛᴜꜱ ➭* _${settings.AUTO_READ_STATUS}_
-* _${settings.PREFIX}autoreadstatus on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ꜱᴛᴀᴛᴜꜱ_ʀᴇᴀᴄᴛ ➭* _${settings.AUTO_STATUS_REACT}_
-* _${settings.PREFIX}statusreact on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ꜱᴛᴀᴛᴜꜱ_ʀᴇᴘʟʏ ➭* _${settings.AUTO_STATUS_REPLY}_
-* _${settings.PREFIX}statusreply on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ꜱᴛᴀᴛᴜꜱ_ʀᴇᴘʟʏ_ᴍꜱɢ ➭ _random_
-* _can't change this_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ʀᴇᴀᴄᴛ ➭* _${settings.AUTO_REACT}_
-* _${settings.PREFIX}autoreact on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ʀᴇᴀᴅ_ᴍꜱɢ ➭* _${settings.READ_MESSAGE}_
-* _${settings.PREFIX}readmessage on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ꜰᴀᴋᴇ_ʀᴇᴄᴏʀᴅɪɴɢ ➭* _${FAKE_RECORDING}_
-* _${settings.PREFIX}fakerecrding on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀᴜᴛᴏ_ᴛʏᴘɪɴɢ ➭* _${settings.AUTO_TYPING}_
-* _${settings.PREFIX}autotyping on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀɴᴛɪ_ʙᴀᴅ_ᴡᴏʀᴅ ➭* _${settings.ANTI_BAD}_
-* _${settings.PREFIX}antibad on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀɴᴛɪ_ʙᴏᴛ ➭* _default_
-* _${settings.PREFIX}antibot off_
-* _${settings.PREFIX}antibot warn_
-* _${settings.PREFIX}antibot delete_
-* _${settings.PREFIX}antibot kick_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀɴᴛɪ_ʟɪɴᴋ ➭* _${settings.ANTI_LINK}_
-* _${settings.PREFIX}antilink on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀɴᴛɪ_ʟɪɴᴋ 1 ➭* _default_
-* _${settings.PREFIX}antilink1 off_
-* _${settings.PREFIX}antilink1 warn_
-* _${settings.PREFIX}antilink1 delete_
-* _${settings.PREFIX}antilink1 kick_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀɴᴛɪ_ᴅᴇʟᴇᴛᴇ ➭* _${settings.ANTI_DELETE}_
-* _${settings.PREFIX}antidel on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀɴᴛɪ_ᴄᴀʟʟ ➭* _${settings.ANTI_CALL}_
-* _${settings.PREFIX}anticall on/off
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ɪɴʙᴏx_ʙʟᴏᴄᴋ ➭* _${settings.INBOX_BLOCK}_
-* _${settings.PREFIX}inboxblock on/off_
-╰━━━━━━━━━━━━━━━
-╭━━━━━━━━━━━━━━━
-*ᴀʟᴡᴀʏꜱ_ᴏɴʟɪɴᴇ ➭* _${config.ALWAYS_ONLINE}_
-* _${settings.PREFIX}alwaysonline on/off_
-╰━━━━━━━━━━━━━━━
+  // we care only if this sender is in an active session
+  if (!global.__settingSession?.[sender]) return
 
-> Gojo-ᴍᴅ ✻
-`
+  // owner protection
+  if (!isOwner) return
 
-await conn.sendMessage(from,{image: {url: `https://raw.githubusercontent.com/gojo18888/Photo-video-/refs/heads/main/file_000000003a2861fd8da00091a32a065a.png`},caption: cap,
-contextInfo: {
-                mentionedJid: ['94743826406@s.whatsapp.net'], // specify mentioned JID(s) if any
-                groupMentions: [],
-                forwardingScore: 1,
-                isForwarded: true,
-                forwardedNewsletterMessageInfo: {
-                    
-                    newsletterName: "Gojo-ᴍᴅ ✻",
-                    serverMessageId: 999
-                }            
-            }
-     }, {quoted: mek});
-     
-}catch(e){
-console.log(e)
-reply(`${e}`)
-}
+  delete global.__settingSession[sender]
+
+  const code = body.trim()
+  let updatedLabel = null
+
+  const yes = true, no = false
+  switch (code) {
+    case '1.1': settingsStorage.MODE = 'public';        updatedLabel = '🌏 WORK_TYPE ➜ PUBLIC'; break
+    case '1.2': settingsStorage.MODE = 'private';       updatedLabel = '🌏 WORK_TYPE ➜ PRIVATE'; break
+    case '1.3': settingsStorage.MODE = 'group';         updatedLabel = '🌏 WORK_TYPE ➜ GROUP_ONLY'; break
+    case '1.4': settingsStorage.MODE = 'inbox';         updatedLabel = '🌏 WORK_TYPE ➜ INBOX_ONLY'; break
+
+    case '2.1': settingsStorage.AUTO_READ_STATUS  = yes; updatedLabel = '👀 AUTO_STATUS_READ ➜ ON';  break
+    case '2.2': settingsStorage.AUTO_READ_STATUS  = no;  updatedLabel = '👀 AUTO_STATUS_READ ➜ OFF'; break
+
+    case '3.1': settingsStorage.AUTO_VOICE        = yes; updatedLabel = '🎙 AUTO_VOICE ➜ ON';        break
+    case '3.2': settingsStorage.AUTO_VOICE        = no;  updatedLabel = '🎙 AUTO_VOICE ➜ OFF';       break
+
+    case '4.1': settingsStorage.READ_MESSAGE      = yes; updatedLabel = '💦 AUTO_MSG_READ ➜ ON';     break
+    case '4.2': settingsStorage.READ_MESSAGE      = no;  updatedLabel = '💦 AUTO_MSG_READ ➜ OFF';    break
+
+    case '5.1': settingsStorage.FAKE_RECORDING    = yes; updatedLabel = '⚡ AUTO_RECORDING ➜ ON';     break
+    case '5.2': settingsStorage.FAKE_RECORDING    = no;  updatedLabel = '⚡ AUTO_RECORDING ➜ OFF';    break
+
+    case '6.1': settingsStorage.AUTO_TYPING       = yes; updatedLabel = '🎯 AUTO_TYPING ➜ ON';       break
+    case '6.2': settingsStorage.AUTO_TYPING       = no;  updatedLabel = '🎯 AUTO_TYPING ➜ OFF';      break
+
+    case '7.1': settingsStorage.READ_ONLY_COMMANDS = yes; updatedLabel = '🍕 READ_ONLY_COMMANDS ➜ ON'; break
+    case '7.2': settingsStorage.READ_ONLY_COMMANDS = no;  updatedLabel = '🍕 READ_ONLY_COMMANDS ➜ OFF'; break
+
+    case '8.1': settingsStorage.AUTO_BLOCK        = yes; updatedLabel = '🚫 AUTO_BLOCK ➜ ON';        break
+    case '8.2': settingsStorage.AUTO_BLOCK        = no;  updatedLabel = '🚫 AUTO_BLOCK ➜ OFF';       break
+
+    case '9.1': settingsStorage.ANTI_CALL         = yes; updatedLabel = '☎ ANTI_CALL ➜ ON';         break
+    case '9.2': settingsStorage.ANTI_CALL         = no;  updatedLabel = '☎ ANTI_CALL ➜ OFF';        break
+
+    case '10.1': settingsStorage.AUTO_REACT       = yes; updatedLabel = '✨ AUTO_REACT ➜ ON';        break
+    case '10.2': settingsStorage.AUTO_REACT       = no;  updatedLabel = '✨ AUTO_REACT ➜ OFF';       break
+
+    case '11.1': settingsStorage.AI_CHAT          = yes; updatedLabel = '👾 AI_CHAT ➜ ON';          break
+    case '11.2': settingsStorage.AI_CHAT          = no;  updatedLabel = '👾 AI_CHAT ➜ OFF';         break
+
+    case '12.1': settingsStorage.ANTI_DELETE      = yes; updatedLabel = '🚯 ANTI_DELETE ➜ ON';      break
+    case '12.2': settingsStorage.ANTI_DELETE      = no;  updatedLabel = '🚯 ANTI_DELETE ➜ OFF';     break
+
+    case '13.1': settingsStorage.ANTI_LINK        = yes; updatedLabel = '🪀 ANTI_LINK ➜ ON';        break
+    case '13.2': settingsStorage.ANTI_LINK        = no;  updatedLabel = '🪀 ANTI_LINK ➜ OFF';       break
+
+    case '14.1': settingsStorage.ANTI_BOT         = yes; updatedLabel = '🤖 ANTI_BOT ➜ ON';         break
+    case '14.2': settingsStorage.ANTI_BOT         = no;  updatedLabel = '🤖 ANTI_BOT ➜ OFF';        break
+
+    case '15.1': settingsStorage.ANTI_BAD         = yes; updatedLabel = '💢 ANTI_BAD ➜ ON';         break
+    case '15.2': settingsStorage.ANTI_BAD         = no;  updatedLabel = '💢 ANTI_BAD ➜ OFF';        break
+  }
+
+  if (!updatedLabel) {
+    return conn.sendMessage(from, { text: '❌ Invalid code!  Type .settings again.' }, { quoted: mek })
+  }
+
+  saveSettings()
+  await conn.sendMessage(from, { text: `*✅ ${updatedLabel}*` }, { quoted: mek })
 })

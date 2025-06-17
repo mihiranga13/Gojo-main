@@ -97,6 +97,7 @@
     "mongoose":"latest", 
     "xfarr-api": "latest",
     "yt-search" : "^2.11.1",
+    "ruhend-scraper":"9.0.1",
     "sqlite3":"latest",
     "@mrnima/tiktok-downloader" :"^1.0.0",
     "@mrnima/facebook-downloader" : "^1.0.0",

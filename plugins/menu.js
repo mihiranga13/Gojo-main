@@ -315,7 +315,7 @@ await conn.sendMessage(from, {
  ╰───────────────✵✵
  ╭────────✵✵
 *┋*  *url*
-      *Convert media to Catbox URL"
+      *Convert media to Catbox URL*
  ╰───────────────✵✵
  ╭────────✵✵
 *┋*  *font*

@@ -108,6 +108,9 @@ await conn.sendMessage(from, {
   ╭────────✵✵
 *┋*  *tt/tiktok*
  ╰───────────────✵✵
+  ╭────────✵✵
+*┋*  *tiktoks/tiktoksearch*
+ ╰───────────────✵✵
  ╭────────✵✵
 *┋*  *twitter*
  ╰───────────────✵✵

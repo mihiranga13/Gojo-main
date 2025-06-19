@@ -1,4 +1,8 @@
-l
+l<div align="center">
+
+<h1 align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=25&duration=3000&color=00FF00&background=000000&center=true&vCenter=true&width=600&lines=⚡+SHABAN+MD+BETTER+OPTION;🔥+The+Most+Powerful+WhatsApp+Bot;💻+developed+by+MR+SHABAN;🚀+SHABAN-MD+V5+Solutions;🌈+Fast+⚡+Secure+🔒+Reliable+✅" alt="Typing Animation">
+</h1>
 <h1 align="center">GOJO-MD V1</h1>
 
 <img src="https://i.imgur.com/dBaSKWF.gif" height="90" width="100%">

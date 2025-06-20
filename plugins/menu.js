@@ -393,7 +393,7 @@ await conn.sendMessage(from, {
  ╰───────────────✵✵
  ╭────────✵✵
 *┋*  *tts3*
-       *Convert text to speech with different                   *voices
+       *Convert text to speech with different                   voices*
  ╰───────────────✵✵
 
 

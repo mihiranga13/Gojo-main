@@ -44,7 +44,7 @@
     "node-cache":"^5.1.2",
     "g-i-s":"^2.1.6",
     "youtube_scraper": "github:vreden/youtube_scraper",
-    "yt-dlp-exec":"^3.0.22",
+    "yt-dlp-exec":"latest",
     "google-it":"^1.6.2",
     "google-tts-api":"^2.0.2",
     "got":"^11.8.2",

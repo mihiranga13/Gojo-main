@@ -1,7 +1,7 @@
 const { fetchJson } = require('../lib/functions');
-const { cmd } = require('../command');
+const { cmd } = require('../lib/command');
 const { getBuffer, sleep } = require('../lib/functions');
-const conf = require('../config.js');
+const conf = require('../settings');
 
 cmd({
   pattern: "cines",

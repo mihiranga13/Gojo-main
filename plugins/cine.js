@@ -1,185 +1,82 @@
-const { fetchJson } = require('../lib/functions');
+const { fetchJson, getBuffer, sleep } = require('../lib/functions');
 const { cmd } = require('../lib/command');
-const { getBuffer, sleep } = require('../lib/functions');
 const conf = require('../settings');
 
 cmd({
-  pattern: "cines",
-  alias: ["ci"],
-  react: "🎬",
-  desc: "Search and download movies from CineSubz",
-  category: "movie",
+  pattern: 'cines',
+  alias: ['ci'],
+  react: '🎬',
+  desc: 'Search and download movies from CineSubz',
+  category: 'movie',
   filename: __filename,
-}, async (conn, m, mek, { from, q, mnu, isME, reply }) => {
+}, async (conn, m, mek, { from, q, isME, reply }) => {
+  if (!q) return reply('*🟡 Please provide a movie name to search!*');
+
   try {
-    // Validate input query
-    if (!q) {
-      return await reply("*Please provide a movie name to search! (e.g., Avatar)*");
-    }
+    const res = await fetchJson(`https://cinesubz-api-zazie.vercel.app/api/search?q=${encodeURIComponent(q)}`);
+    const list = res?.result?.data;
+    if (!res?.status || !list?.length) return reply(`❌ No results found for: "${q}"`);
 
-    // Step 1: Search movies from CineSubz API
-    const searchResponse = await fetchJson(
-      `https://cinesubz-api-zazie.vercel.app/api/search?q=${encodeURIComponent(q)}`
-    );
-    const searchData = searchResponse;
+    let text = `🎬 *Search Results for:* "${q}"\n\n`;
+    text += list.map((v, i) => `*${i + 1}.* ${v.title} (${v.year})`).join('\n');
 
-    if (!searchData.status || !searchData.result?.data?.length) {
-      return await reply(`*No results found for:* "${q}"`);
-    }
+    const msg = await conn.sendMessage(from, { text }, { quoted: mek });
 
-    const searchResults = searchData.result.data;
-    let resultsMessage = `✨ *QUEEN ANJU CINESUBZ DOWNLOADER* ✨\n\n🎥 *Search Results for* "${q}":\n\n`;
+    conn.addReplyTracker(msg.key.id, async (mek2, body) => {
+      const pick = parseInt(body.trim());
+      if (isNaN(pick) || pick < 1 || pick > list.length) return reply('❗ Invalid number. Try again.');
 
-    searchResults.forEach((result, index) => {
-      resultsMessage += `*${index + 1}.* ${result.title} (${result.year})\n🔗 Link: ${result.link}\n\n`;
-    });
+      const chosen = list[pick - 1];
+      const details = await fetchJson(`https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(chosen.link)}`);
+      const movie = details?.result?.data;
 
-    await sleep(2000);
-    const sentMsg = await conn.sendMessage(
-      from,
-      { text: resultsMessage },
-      { quoted: mek }
-    );
-    const messageID = sentMsg.key.id;
+      if (!movie?.dl_links?.length) return reply('❌ No download links available.');
 
-    // Step 2: Wait for the user to select a movie
-    conn.addReplyTracker(messageID, async (mek, messageType) => {
-      if (!mek.message) return;
-      const sender = mek.key.participant || mek.key.remoteJid;
-      const selectedNumber = parseInt(messageType.trim());
+      let qlist = `🎞️ *${movie.title}*\n\n📥 *Select a quality to download:*\n`;
+      qlist += movie.dl_links.map((v, i) => `*${i + 1}.* ${v.quality} - ${v.size}`).join('\n');
 
-      if (
-        !isNaN(selectedNumber) &&
-        selectedNumber > 0 &&
-        selectedNumber <= searchResults.length
-      ) {
-        const selectedMovie = searchResults[selectedNumber - 1];
+      const msg2 = await conn.sendMessage(from, { text: qlist }, { quoted: mek2 });
 
-        // Step 3: Fetch download links for the selected movie
-        const movieResponse = await fetchJson(
-          `https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(
-            selectedMovie.link
-          )}`
-        );
-        const movieData = movieResponse;
+      conn.addReplyTracker(msg2.key.id, async (mek3, body2) => {
+        const pick2 = parseInt(body2.trim());
+        if (isNaN(pick2) || pick2 < 1 || pick2 > movie.dl_links.length) return reply('❗ Invalid quality selection.');
 
-        if (!movieData.status || !movieData.result?.data?.dl_links) {
-          return await reply("*Error fetching download links for this movie.*");
-        }
+        const chosenQuality = movie.dl_links[pick2 - 1];
+        const direct = await fetchJson(`https://cinesubz-api-zazie.vercel.app/api/links?url=${encodeURIComponent(chosenQuality.link)}`);
+        const finalUrl = direct?.result?.direct;
 
-        const { title, imdbRate, image, date, country, duration, dl_links } = movieData.result.data;
+        if (!finalUrl) return reply('❌ Failed to retrieve the direct download link.');
 
-        if (dl_links.length === 0) {
-          return await reply("*No download links available for this movie.*");
-        }
+        const thumb = await getBuffer(movie.image);
+        await conn.sendMessage(from, { react: { text: '⬆️', key: msg2.key } });
 
-        let downloadMessage = `🎥 *${title}*\n\n*Available Download Links:*\n`;
-        dl_links.forEach((link, index) => {
-          downloadMessage += `*${index + 1}.* ${link.quality} - ${link.size}\n\n`;
-        });
-
-        const sentDownloadMsg = await conn.sendMessage(
-          from,
-          { text: downloadMessage },
-          { quoted: mnu }
-        );
-        const downloadMessageID = sentDownloadMsg.key.id;
-
-        // Step 4: Wait for the user to select a download quality
-        conn.addReplyTracker(downloadMessageID, async (mek, downloadMessageType) => {
-          if (!mek.message) return;
-          const sender = mek.key.participant || mek.key.remoteJid;
-          const selectedQuality = parseInt(downloadMessageType.trim());
-
-          if (
-            !isNaN(selectedQuality) &&
-            selectedQuality > 0 &&
-            selectedQuality <= dl_links.length
-          ) {
-            const selectedLink = dl_links[selectedQuality - 1];
-
-            // Step 5: Fetch the direct download link
-            const movieLinkResponse = await fetchJson(
-              `https://cinesubz-api-zazie.vercel.app/api/links?url=${encodeURIComponent(
-                selectedLink.link
-              )}`
-            );
-            const movieLinkData = movieLinkResponse;
-
-            // Check if direct link exists
-            if (!movieLinkData?.result?.direct) {
-              console.error('API response lacks direct link:', movieLinkData);
-              return await reply("*Failed to retrieve direct download link. The link may be invalid or unavailable.*");
-            }
-
-            const downloadUrl = movieLinkData.result.direct;
-            let sendto = isME ? conf.MOVIE_JID || from : from;
-
-            let downloadMessag = `
-🎬 *𝚀𝚄𝙴𝙴𝙽 𝙰𝙽𝙹𝚄 𝗫ᴾᴿᴼ 𝗖𝗜𝗡𝗘𝗠𝗔* 🎥  
-╔══════════════════════════╗  
-   𝙔𝙤𝙪𝙧 𝙂𝙖𝙩𝙚𝙬𝙖𝙮 𝙩𝙤  
-    🎥 𝗘𝗻𝘁𝗲𝗿𝘁𝗮𝗶𝗻𝗺𝗲𝗻𝘁 🎥  
-╚══════════════════════════╝  
-
-✨ 🎥 **🎞 Movie:** *${title}*  
-
-⭐ *𝗜𝗠𝗗𝗕 𝗥𝗮𝘁𝗶𝗻𝗴:* *${imdbRate}*  
-📅 *�_R𝗲𝗹𝗲𝗮𝘀𝗲 𝗗𝗮𝘁𝗲:* *${date}*  
-🌍 *𝗖𝗼𝘂𝗻𝘁𝗿𝘆:* *${country}*  
-⏳ *𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻:* *${duration}*  
-
-╔═════ஜ۩۞۩ஜ═════╗  
-© 𝟸𝟶𝟸𝟻 *Queen Anju XPRO*  
-🚀 *𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗚𝗮𝗺𝗶𝗻𝗴 𝗥𝗮𝘀𝗵*  
-🔗 *GitHub:github.com/Mrrashmika/Queen_Anju-MD 
-📡 _Stay Connected. Stay Entertained!_  
-╚═════ஜ۩۞۩ஜ═════╝`;
-
-            await conn.sendMessage(from, { react: { text: '⬆️', key: sentDownloadMsg.key } });
-
-            await conn.sendMessage(
-              sendto,
-              {
-                document: { url: downloadUrl },
-                mimetype: "video/mp4",
-                fileName: `${title} - ${selectedLink.quality}.mp4`,
-                caption: downloadMessag,
-                contextInfo: {
-                  mentionedJid: [],
-                  groupMentions: [],
-                  forwardingScore: 999,
-                  isForwarded: true,
-                  forwardedNewsletterMessageInfo: {
-                    newsletterJid: '120363299978149557@newsletter',
-                    newsletterName: "© 𝚀𝚄𝙴𝙴𝙽 𝙰𝙽𝙹𝚄 𝗑ᴾᴿᴼ 💚",
-                    serverMessageId: 999
-                  },
-                  externalAdReply: {
-                    title: title,
-                    body: '🎬 *𝚀𝚄𝙴𝙴𝙽 𝙰𝙽𝙹𝚄 𝗫ᴾᴿᴼ 𝗖𝗜𝗡𝗘𝗠𝗔* 🎥',
-                    mediaType: 1,
-                    sourceUrl: selectedMovie.link,
-                    thumbnailUrl: image,
-                    renderLargerThumbnail: true,
-                    showAdAttribution: true
-                  }
-                }
+        await conn.sendMessage(
+          isME ? conf.MOVIE_JID || from : from,
+          {
+            document: { url: finalUrl },
+            mimetype: 'video/mp4',
+            fileName: `${movie.title} - ${chosenQuality.quality}.mp4`,
+            caption: `🎬 *${movie.title}*\n⭐ *IMDb:* ${movie.imdbRate}\n📅 *Date:* ${movie.date}\n🌍 *Country:* ${movie.country}\n⏳ *Duration:* ${movie.duration}`,
+            contextInfo: {
+              externalAdReply: {
+                title: movie.title,
+                body: 'CineSubz X Queen Anju',
+                mediaType: 1,
+                thumbnail: thumb,
+                renderLargerThumbnail: true,
+                sourceUrl: chosen.link,
               },
-              { quoted: mnu }
-            );
+            },
+          },
+          { quoted: mek3 }
+        );
 
-            await conn.sendMessage(from, { react: { text: '✅', key: sentDownloadMsg.key } });
-          } else {
-            await reply("Invalid selection. Please reply with a valid number.");
-          }
-        });
-      } else {
-        await reply("Invalid selection. Please reply with a valid number.");
-      }
+        await conn.sendMessage(from, { react: { text: '✅', key: msg2.key } });
+      });
     });
+
   } catch (e) {
-    console.error("Error during CineSubz command execution:", e);
-    reply("*An error occurred while processing your request.*");
+    console.error(e);
+    reply('❌ *An error occurred while processing your request.*');
   }
 });

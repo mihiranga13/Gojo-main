@@ -1,5 +1,4 @@
-// plugins/cine.js – CineSubz search & download plugin (Fixed dl_links support)
-// Dependencies: axios, node-cache
+// plugins/cine.js fallback + better no-download-links handling
 
 const { cmd } = require('../lib/command');
 const axios = require('axios');
@@ -68,16 +67,15 @@ cmd({
         return conn.sendMessage(from, { text: '❌ Invalid number.' }, { quoted: msg });
       }
 
-      // Fetch movie details for download links
       try {
         const res = await axios.get(`https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(film.link)}`, { timeout: 10000 });
         const mov = res.data?.result?.data;
 
         if (!mov || !mov.dl_links || !mov.dl_links.length) {
-          return conn.sendMessage(from, { text: '❌ No download links found.' }, { quoted: msg });
+          await conn.sendMessage(from, { text: '❌ Sorry, download links for this movie are not available currently.\n\nYou can try another movie.' }, { quoted: msg });
+          return;
         }
 
-        // Filter valid dl_links (non-empty link field)
         const qualities = mov.dl_links
           .filter(link => link.link && link.link.trim() !== '')
           .map((link, i) => ({
@@ -88,7 +86,8 @@ cmd({
           }));
 
         if (!qualities.length) {
-          return conn.sendMessage(from, { text: '❌ No valid download links found.' }, { quoted: msg });
+          await conn.sendMessage(from, { text: '❌ Sorry, no valid download links found for this movie.\n\nTry another movie.' }, { quoted: msg });
+          return;
         }
 
         let qText = `*🎬 ${film.title}*\n\n📥 Choose quality:\n\n`;
@@ -118,7 +117,6 @@ cmd({
           }
 
           try {
-            // Use direct link as is since no further resolving API provided
             const direct = pick.link;
             if (!direct) return conn.sendMessage(from, { text: '❌ Direct link not found.' }, { quoted: qReply });
 
@@ -153,7 +151,7 @@ cmd({
 
       } catch (err) {
         console.error(err);
-        return conn.sendMessage(from, { text: '❌ Failed to fetch movie details.' }, { quoted: msg });
+        conn.sendMessage(from, { text: '❌ Failed to fetch movie details.' }, { quoted: msg });
       }
 
       conn.ev.off('messages.upsert', movieListener);

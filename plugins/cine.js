@@ -1,140 +1,171 @@
+// plugins/cine.js – CineSubz search & download plugin (refined)
+// Dependencies: axios, node-cache
+
 const { cmd } = require('../lib/command');
 const axios = require('axios');
+const NodeCache = require('node-cache');
 
 const BRAND = '✫☘𝐆𝐎𝐉𝐎 𝐌𝐎𝐕𝐈𝐄 𝐇𝐎𝐌𝐄☢️☘';
+const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
 
 cmd({
-    pattern: 'cine',
-    alias: ['cines', 'cinesubz'],
-    react: '🎬',
-    desc: 'Search & download movies from CineSubz',
-    category: 'movie',
-    filename: __filename
+  pattern: 'cine',
+  alias: ['cines', 'cinesubz'],
+  react: '🎬',
+  desc: 'Search & download movies from CineSubz',
+  category: 'movie',
+  filename: __filename
 }, async (conn, mek, m, { from, q }) => {
-    const query = (q || '').trim();
-    if (query.length < 2) {
-        return conn.sendMessage(from, { text: '*🎬 CineSubz Search*\n\n📌 Usage: .cine <movie name>\n🧪 Example: .cine Deadpool\n\n💡 Reply "done" to cancel' }, { quoted: mek });
+  const query = (q || '').trim();
+
+  if (query.length < 2) {
+    return conn.sendMessage(from, {
+      text: '*🎬 CineSubz Search*\n\n📌 Usage: .cine <movie name>\n🧪 Example: .cine Deadpool 2\n\n💡 Reply "done" to cancel'
+    }, { quoted: mek });
+  }
+
+  try {
+    const key = 'cine_' + query.toLowerCase();
+    let results = cache.get(key);
+
+    if (!results) {
+      const res = await axios.get(`https://cinesubz-api-zazie.vercel.app/api/search?q=${encodeURIComponent(query)}`, { timeout: 10000 });
+      if (!res.data?.status || !Array.isArray(res.data.results) || !res.data.results.length) {
+        throw new Error(`No results found for "${query}".`);
+      }
+      results = res.data.results;
+      cache.set(key, results);
     }
 
-    try {
-        // Search API call
-        const searchRes = await axios.get(`https://cinesubz-api-zazie.vercel.app/api/search?q=${encodeURIComponent(query)}`, { timeout: 10000 });
-        if (!searchRes.data?.status || !searchRes.data.result?.data?.length) {
-            throw new Error('No results found.');
+    const films = results.map((v, i) => ({
+      n: i + 1,
+      title: v.title,
+      year: v.year,
+      imdb: v.imdb,
+      link: v.url || v.link,
+      image: v.image
+    }));
+
+    let listCaption = '*🎬 SEARCH RESULTS*\n\n';
+    for (const f of films) {
+      listCaption += `🎥 ${f.n}. *${f.title}* (${f.year || 'N/A'})\n⭐ IMDB: ${f.imdb || 'N/A'}\n\n`;
+    }
+    listCaption += '🔢 Reply number • "done" to cancel';
+
+    const listMsg = await conn.sendMessage(from, {
+      image: { url: films[0].image },
+      caption: listCaption
+    }, { quoted: mek });
+
+    const waiting = new Map();
+
+    const handler = async ({ messages }) => {
+      const msg = messages?.[0];
+      if (!msg?.message?.extendedTextMessage) return;
+      const body = msg.message.extendedTextMessage.text.trim();
+      const replyTo = msg.message.extendedTextMessage.contextInfo?.stanzaId;
+
+      // Cancel check
+      if (body.toLowerCase() === 'done') {
+        conn.ev.off('messages.upsert', handler);
+        waiting.clear();
+        return conn.sendMessage(from, { text: '✅ Cancelled.' }, { quoted: msg });
+      }
+
+      // Step 1: Movie selection
+      if (replyTo === listMsg.key.id) {
+        const film = films.find(f => f.n === parseInt(body));
+        if (!film) {
+          return conn.sendMessage(from, { text: '❌ Invalid number.' }, { quoted: msg });
         }
-        const movies = searchRes.data.result.data;
 
-        // Build search results message
-        let listText = '*🎬 SEARCH RESULTS*\n\n';
-        movies.forEach((movie, i) => {
-            listText += `🎥 ${i + 1}. *${movie.title}* (${movie.year || 'N/A'})\n⭐ IMDB: ${movie.imdb || 'N/A'}\n\n`;
-        });
-        listText += '🔢 Reply with the number to choose or "done" to cancel.';
+        let mov;
+        try {
+          const mUrl = `https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(film.link)}`;
+          mov = (await axios.get(mUrl, { timeout: 10000 })).data;
+        } catch (e) {
+          return conn.sendMessage(from, { text: '❌ Failed to fetch movie details.' }, { quoted: msg });
+        }
 
-        // Send search result
-        const sentMsg = await conn.sendMessage(from, { text: listText }, { quoted: mek });
+        if (!mov?.status || !mov.qualities?.length) {
+          return conn.sendMessage(from, { text: '❌ No video qualities found.' }, { quoted: msg });
+        }
 
-        // Listener for user reply to pick movie
-        const listener = async ({ messages }) => {
-            const msg = messages?.[0];
-            if (!msg?.message?.extendedTextMessage) return;
-            const body = msg.message.extendedTextMessage.text.trim().toLowerCase();
-            const replyTo = msg.message.extendedTextMessage.contextInfo?.stanzaId;
-            if (replyTo !== sentMsg.key.id) return;
+        const qualities = mov.qualities
+          .filter(q => q.label.match(/480|720|1080/))
+          .map((q, i) => ({ n: i + 1, label: q.label, size: q.size, link: q.url || q.link }));
 
-            if (body === 'done') {
-                await conn.sendMessage(from, { text: '✅ Cancelled.' }, { quoted: msg });
-                conn.ev.off('messages.upsert', listener);
-                return;
-            }
+        if (!qualities.length) {
+          return conn.sendMessage(from, { text: '❌ No valid qualities.' }, { quoted: msg });
+        }
 
-            const index = parseInt(body);
-            if (isNaN(index) || index < 1 || index > movies.length) {
-                await conn.sendMessage(from, { text: '❌ Invalid number. Try again.' }, { quoted: msg });
-                return;
-            }
+        let qCap = `*🎬 ${film.title}*\n\n📥 Choose quality:\n\n`;
+        for (const ql of qualities) {
+          qCap += `${ql.n}. *${ql.label}* (${ql.size})\n`;
+        }
+        qCap += '\n🔢 Reply number • "done" to cancel';
 
-            const selectedMovie = movies[index - 1];
+        const qMsg = await conn.sendMessage(from, {
+          image: { url: film.image },
+          caption: qCap
+        }, { quoted: msg });
 
-            // Fetch movie details with download links
-            try {
-                const detailsRes = await axios.get(`https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(selectedMovie.link)}`, { timeout: 10000 });
-                const details = detailsRes.data;
+        waiting.set(qMsg.key.id, { film, qualities });
+        return;
+      }
 
-                if (!details.status || !details.result.data.dl_links || details.result.data.dl_links.length === 0) {
-                    await conn.sendMessage(from, { text: '❌ No valid download links found.' }, { quoted: msg });
-                    return;
-                }
+      // Step 2: Quality selection
+      if (waiting.has(replyTo)) {
+        const { film, qualities } = waiting.get(replyTo);
+        const pick = qualities.find(p => p.n === parseInt(body));
+        if (!pick) {
+          return conn.sendMessage(from, { text: '❌ Wrong quality selected.' }, { quoted: msg });
+        }
 
-                // Build download qualities list
-                const dlLinks = details.result.data.dl_links.filter(dl => dl.link && dl.quality);
-                if (dlLinks.length === 0) {
-                    await conn.sendMessage(from, { text: '❌ No downloadable qualities available.' }, { quoted: msg });
-                    return;
-                }
+        let linkRes;
+        try {
+          const lUrl = `https://cinesubz-api-zazie.vercel.app/api/links?url=${encodeURIComponent(pick.link)}`;
+          linkRes = (await axios.get(lUrl, { timeout: 10000 })).data;
+        } catch {
+          return conn.sendMessage(from, { text: '❌ Failed to resolve download link.' }, { quoted: msg });
+        }
 
-                let dlText = `*🎬 ${details.result.data.title}*\n\n📥 Choose quality:\n\n`;
-                dlLinks.forEach((dl, i) => {
-                    dlText += `${i + 1}. *${dl.quality}* (${dl.size || 'N/A'})\n`;
-                });
-                dlText += '\n🔢 Reply with number or "done" to cancel.';
+        const direct = linkRes?.direct_download || linkRes?.url;
+        if (!direct) {
+          return conn.sendMessage(from, { text: '❌ Direct link not found.' }, { quoted: msg });
+        }
 
-                // Send qualities message
-                const qualMsg = await conn.sendMessage(from, { text: dlText }, { quoted: msg });
+        const size = pick.size || '';
+        const gb = size.toLowerCase().includes('gb') ? parseFloat(size) : parseFloat(size) / 1024;
+        if (gb > 2 || isNaN(gb)) {
+          return conn.sendMessage(from, {
+            text: `⚠️ File too large (~${gb.toFixed(2)} GB). Use this link:\n${direct}`
+          }, { quoted: msg });
+        }
 
-                // Listener for quality selection
-                const qualListener = async ({ messages }) => {
-                    const qMsg = messages?.[0];
-                    if (!qMsg?.message?.extendedTextMessage) return;
-                    const qBody = qMsg.message.extendedTextMessage.text.trim().toLowerCase();
-                    const qReplyTo = qMsg.message.extendedTextMessage.contextInfo?.stanzaId;
-                    if (qReplyTo !== qualMsg.key.id) return;
+        const safeTitle = film.title.replace(/[\\/:*?"<>|]/g, '');
+        const fileName = `${BRAND} • ${safeTitle} • ${pick.label}.mp4`;
 
-                    if (qBody === 'done') {
-                        await conn.sendMessage(from, { text: '✅ Cancelled.' }, { quoted: qMsg });
-                        conn.ev.off('messages.upsert', qualListener);
-                        return;
-                    }
+        try {
+          await conn.sendMessage(from, {
+            document: { url: direct },
+            mimetype: 'video/mp4',
+            fileName: fileName,
+            caption: `🎬 *${film.title}*\n📊 Size: ${pick.size}\n🔥 ${BRAND}`
+          }, { quoted: msg });
 
-                    const qIndex = parseInt(qBody);
-                    if (isNaN(qIndex) || qIndex < 1 || qIndex > dlLinks.length) {
-                        await conn.sendMessage(from, { text: '❌ Invalid quality number. Try again.' }, { quoted: qMsg });
-                        return;
-                    }
+          await conn.sendMessage(from, { react: { text: '✅', key: msg.key } });
+        } catch {
+          await conn.sendMessage(from, { text: `❌ Upload failed. Link:\n${direct}` }, { quoted: msg });
+        }
 
-                    const chosen = dlLinks[qIndex - 1];
-                    const link = chosen.link;
-                    if (!link) {
-                        await conn.sendMessage(from, { text: '❌ Download link not found.' }, { quoted: qMsg });
-                        return;
-                    }
+        conn.ev.off('messages.upsert', handler); // Unsubscribe handler after success
+      }
+    };
 
-                    // Optional: check file size to avoid huge files
-                    // Just send link and movie info
-
-                    await conn.sendMessage(from, {
-                        document: { url: link },
-                        mimetype: 'video/mp4',
-                        fileName: `${BRAND} • ${details.result.data.title} • ${chosen.quality}.mp4`,
-                        caption: `🎬 *${details.result.data.title}*\n📊 Quality: ${chosen.quality}\n🔗 Download link: ${link}\n\n${BRAND}`
-                    }, { quoted: qMsg });
-
-                    await conn.sendMessage(from, { react: { text: '✅', key: qMsg.key } });
-
-                    // Remove listeners after done
-                    conn.ev.off('messages.upsert', qualListener);
-                    conn.ev.off('messages.upsert', listener);
-                };
-
-                conn.ev.on('messages.upsert', qualListener);
-            } catch (err) {
-                await conn.sendMessage(from, { text: '❌ Failed to fetch movie details.' }, { quoted: msg });
-            }
-        };
-
-        conn.ev.on('messages.upsert', listener);
-    } catch (err) {
-        console.error(err);
-        await conn.sendMessage(from, { text: `❌ Error: ${err.message || 'Something went wrong!'}` }, { quoted: mek });
-    }
+    conn.ev.on('messages.upsert', handler);
+  } catch (err) {
+    console.error(err);
+    conn.sendMessage(from, { text: `❌ Error: ${err.message}` }, { quoted: mek });
+  }
 });

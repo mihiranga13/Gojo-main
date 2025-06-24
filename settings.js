@@ -33,5 +33,5 @@ ALWAYS_ONLINE: process.env.ALWAYS_ONLINE || "false",
 ANTI_DELETE: process.env.ANTI_DELETE || "true",
 DELETEMSGSENDTO : process.env.DELETEMSGSENDTO === undefined ? '' : process.env.DELETEMSGSENDTO,
 INBOX_BLOCK: process.env.INBOX_BLOCK || "false",
-
+ANTI_DEL_PATH: process.env.ANTI_DEL_PATH || "public", 
 };

@@ -79,7 +79,7 @@
     "raganork-bot":"^3.0.1",
     "removebg-wrapper":"^1.0.3",
     "secktor-pack":"latest",
-    "sequelize":"^6.28.0",
+    "sequelize":"^6.37.5",
     "sirasa-news":"latest",
     "softie-api":"^1.1.0",
     "stream":"^0.0.2",

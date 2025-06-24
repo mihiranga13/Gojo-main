@@ -1,4 +1,4 @@
-// plugins/cine.js – CineSubz search & download plugin (Updated Stable Version)
+// plugins/cine.js – CineSubz search & download plugin (Fixed dl_links support)
 // Dependencies: axios, node-cache
 
 const { cmd } = require('../lib/command');
@@ -68,23 +68,27 @@ cmd({
         return conn.sendMessage(from, { text: '❌ Invalid number.' }, { quoted: msg });
       }
 
-      // Fetch movie details for qualities
+      // Fetch movie details for download links
       try {
         const res = await axios.get(`https://cinesubz-api-zazie.vercel.app/api/movie?url=${encodeURIComponent(film.link)}`, { timeout: 10000 });
-        const mov = res.data;
-        if (!mov?.status || !mov.qualities?.length) {
-          return conn.sendMessage(from, { text: '❌ No qualities found.' }, { quoted: msg });
+        const mov = res.data?.result?.data;
+
+        if (!mov || !mov.dl_links || !mov.dl_links.length) {
+          return conn.sendMessage(from, { text: '❌ No download links found.' }, { quoted: msg });
         }
 
-        const qualities = mov.qualities.filter(q => q.label.match(/480|720|1080/)).map((q, i) => ({
-          n: i + 1,
-          label: q.label,
-          size: q.size,
-          link: q.url || q.link
-        }));
+        // Filter valid dl_links (non-empty link field)
+        const qualities = mov.dl_links
+          .filter(link => link.link && link.link.trim() !== '')
+          .map((link, i) => ({
+            n: i + 1,
+            label: link.quality || 'Unknown Quality',
+            size: link.size || 'Unknown Size',
+            link: link.link
+          }));
 
         if (!qualities.length) {
-          return conn.sendMessage(from, { text: '❌ No valid qualities.' }, { quoted: msg });
+          return conn.sendMessage(from, { text: '❌ No valid download links found.' }, { quoted: msg });
         }
 
         let qText = `*🎬 ${film.title}*\n\n📥 Choose quality:\n\n`;
@@ -114,8 +118,8 @@ cmd({
           }
 
           try {
-            const linkRes = (await axios.get(`https://cinesubz-api-zazie.vercel.app/api/links?url=${encodeURIComponent(pick.link)}`, { timeout: 10000 })).data;
-            const direct = linkRes?.direct_download || linkRes?.url;
+            // Use direct link as is since no further resolving API provided
+            const direct = pick.link;
             if (!direct) return conn.sendMessage(from, { text: '❌ Direct link not found.' }, { quoted: qReply });
 
             const sz = (pick.size || '').toLowerCase();
@@ -139,7 +143,7 @@ cmd({
 
             await conn.sendMessage(from, { react: { text: '✅', key: qReply.key } });
           } catch {
-            conn.sendMessage(from, { text: `❌ Upload failed. Link:\n${direct}` }, { quoted: qReply });
+            conn.sendMessage(from, { text: `❌ Upload failed. Link:\n${pick.link}` }, { quoted: qReply });
           }
 
           conn.ev.off('messages.upsert', qualityListener);
@@ -147,7 +151,8 @@ cmd({
 
         conn.ev.on('messages.upsert', qualityListener);
 
-      } catch {
+      } catch (err) {
+        console.error(err);
         return conn.sendMessage(from, { text: '❌ Failed to fetch movie details.' }, { quoted: msg });
       }
 

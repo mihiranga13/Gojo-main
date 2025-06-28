@@ -1,77 +1,75 @@
-// plugins/xvideo.js
-const l = console.log
+const { fetchJson } = require("../lib/functions");
+const { cmd } = require("../lib/command");
+const axios = require("axios");
 
-import config from '../settings.js'
-import { cmd, commands } from '../lib/command.js'
-import { xvideosSearch, xvideosdl } from '../lib/ascraper.js'
+const apilink = 'https://www.dark-yasiya-api.site';
 
-cmd(
-  {
-    pattern: "xvid",
-    alias: ["xvideos"],
+cmd({
+    pattern: "xvdl",
+    alias: ["xvdl", "xvdown"],
     react: "🔞",
-    desc: "Search and download Xvideos videos",
-    category: "nsfw",
-    filename: import.meta.url, // ✅ ESM equivalent to __filename
-    group: true,
-    premium: false,
-    register: true,
-  },
-  async (robin, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sender, reply }) => {
+    desc: "Download xvideo.com porn video",
+    category: "download",
+    use: '.xvdl <query>',
+    filename: __filename
+}, async (conn, m, mek, { from, q, reply }) => {
     try {
-      if (!q) {
-        return reply(`✳️ What do you want to search?\n\nUsage: *${command} <search or URL>*\nExample: Hot desi bhabi or Xvideos URL`);
-      }
+        if (!q) return await reply("❌ Please provide a search query!");
 
-      // 💡 Ensure global DB structure exists
-      if (!global.db) global.db = { data: { chats: {}, users: {} } }
-      if (!global.db.data) global.db.data = { chats: {}, users: {} }
-      if (!global.db.data.chats) global.db.data.chats = {}
-      if (!global.db.data.users) global.db.data.users = {}
+        const xvList = await fetchJson(`${apilink}/search/xvideo?q=${q}`);
+        if (!xvList?.result?.length) return await reply("❌ No results found!");
 
-      const chat = global.db.data.chats[m.chat] || {}
-      const user = global.db.data.users[m.sender] || {}
+        const xvData = await fetchJson(`${apilink}/download/xvideo?url=${xvList.result[0].url}`);
+        const res = xvData.result;
 
-      // ❌ NSFW group restriction
-      if (!chat.nsfw) {
-        return reply(`🚫 This group does not support NSFW content.\nTo turn it on, use: *${command} enable nsfw*`);
-      }
+        let info = `🔞 *𝙓𝙑𝙞𝙙𝙚𝙤 𝙎𝙚𝙭 𝘿𝙤𝙬𝙣𝙡𝙤𝙖𝙙𝙚𝙧* 🔞\n\n` +
+            `📌 *Title:* ${res.title || "Unknown"}\n` +
+            `👁 *Views:* ${res.views || "Unknown"}\n` +
+            `👍 *Likes:* ${res.like || "Unknown"}\n` +
+            `👎 *Dislikes:* ${res.deslike || "Unknown"}\n` +
+            `📦 *Size:* ${res.size || "Unknown"}\n\n` +
+            `🔽 *Reply with your choice:*\n` +
+            `1️⃣ *Video File* 📹\n` +
+            `2️⃣ *Document File* 📁\n\n` +
+            `🔐 *Powered by gojo md*`;
 
-      // ❌ Age restriction
-      const userAge = user.age || 0
-      if (userAge < 18) {
-        return reply(`❎ You must be 18 years or older to use this feature.`);
-      }
+        const sentMsg = await conn.sendMessage(from, { image: { url: res.image }, caption: info }, { quoted: mek });
+        const messageID = sentMsg.key.id;
+        await conn.sendMessage(from, { react: { text: '📥', key: sentMsg.key } });
 
-      m.react('⌛')
+        conn.ev.on('messages.upsert', async (msgUp) => {
+            try {
+                const msgInfo = msgUp?.messages?.[0];
+                if (!msgInfo?.message) return;
 
-      const isURL = /^(https?:\/\/)?(www\.)?xvideos\.com\/.+$/i.test(q)
+                const userText = msgInfo.message?.conversation || msgInfo.message?.extendedTextMessage?.text;
+                const isReplyToOurMsg = msgInfo.message?.extendedTextMessage?.contextInfo?.stanzaId === messageID;
 
-      if (isURL) {
-        const videoLinks = await xvideosdl(q)
-        const videoUrl = videoLinks?.high || videoLinks?.low || videoLinks?.hls
+                if (!isReplyToOurMsg) return;
 
-        if (!videoUrl) return reply("❌ Video URL not found.")
+                let userReply = userText.trim();
 
-        await robin.sendMessage(from, {
-          video: { url: videoUrl },
-          caption: "🔞 Here is your Xvideos video."
-        }, { quoted: mek })
+                if (userReply === "1") {
+                    const sent = await conn.sendMessage(from, { text: "⏳ Downloading video..." }, { quoted: mek });
+                    await conn.sendMessage(from, { video: { url: res.dl_link }, mimetype: "video/mp4", caption: res.title }, { quoted: mek });
+                    await conn.sendMessage(from, { text: "✅ Video sent!\nPowered by gojo md", edit: sent.key });
+                } else if (userReply === "2") {
+                    const sent = await conn.sendMessage(from, { text: "⏳ Uploading document..." }, { quoted: mek });
+                    await conn.sendMessage(from, { document: { url: res.dl_link }, fileName: `${res.title}.mp4`, mimetype: "video/mp4", caption: res.title }, { quoted: mek });
+                    await conn.sendMessage(from, { text: "✅ Document sent!\nPowered by gojo md", edit: sent.key });
+                } else {
+                    await conn.sendMessage(from, { text: "❌ Invalid choice! Reply with 1 or 2", quoted: msgInfo });
+                }
 
-      } else {
-        const results = await xvideosSearch(q)
-        if (!results.length) return reply("❌ No search results found for the given query.")
+            } catch (err) {
+                console.error(err);
+                await reply(`❌ Error while handling reply: ${err.message}`);
+            }
+        });
 
-        const searchResults = results.map((res, i) => (
-          `${i + 1}. *${res.title}*\nDuration: ${res.duration}\nURL: ${res.videoUrl}`
-        )).join('\n\n')
-
-        reply(`*Search Results for "${q}":*\n\n${searchResults}`)
-      }
-
-    } catch (e) {
-      console.error(e)
-      reply(`❌ Error: ${e.message || e}`)
+    } catch (err) {
+        console.error(err);
+        await conn.sendMessage(from, { react: { text: '❌', key: mek.key } });
+        await reply(`❌ *An error occurred:* ${err.message}`);
     }
-  }
-)
+});

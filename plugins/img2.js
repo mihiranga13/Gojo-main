@@ -1,5 +1,5 @@
 const { cmd } = require('../lib/command'); // Ensure the path is correct
-const g_i_s = require('g-i-s'); // Import g-i-s for image search
+const gis = require('async-g-i-s'); // Import g-i-s for image search
 
 cmd({
     pattern: "img",

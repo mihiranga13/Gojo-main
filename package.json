@@ -30,7 +30,7 @@
     "ytsr": "^3.8.4",
     "crypto": "latest",
     "chatgpt-scraper": "^1.0.0",
-    "cheerio": "latest",
+    "cheerio": "1.0.0-rc.12",
     "css-select": "4.1.0",
     "@dark-yasiya/yt-dl.js": "^1.0.4",
     "express": "latest",

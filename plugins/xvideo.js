@@ -2,12 +2,12 @@ const { cmd } = require('../lib/command');
 const axios = require('axios');
 
 let hamsterConn = null;
-const replyCache = {}; 
+const replyCache = {};
 
 cmd({
     pattern: "xhsearch",
     alias: ["hamster", "xhamster"],
-    desc: "Search and download videos from dtzhamster.netlify.app",
+    desc: "Search and download videos from XHamster (darkapi.vercel.app)",
     react: "🔞",
     category: "adult",
     filename: __filename
@@ -23,15 +23,15 @@ cmd({
     await conn.sendMessage(from, { react: { text: "🔍", key: mek.key } });
 
     try {
-        const searchUrl = `https://dtzhamster.netlify.app/search?q=${encodeURIComponent(query)}`;
+        const searchUrl = `https://darkapi.vercel.app/api/xhamster?search=${encodeURIComponent(query)}`;
         const { data } = await axios.get(searchUrl);
 
-        if (!Array.isArray(data.results) || data.results.length === 0) {
+        if (!Array.isArray(data.result) || data.result.length === 0) {
             await conn.sendMessage(from, { react: { text: "❌", key: mek.key } });
             return reply("❌ No results found. Try a different keyword.");
         }
 
-        const results = data.results.slice(0, 25);
+        const results = data.result.slice(0, 20); 
         let text = `*🔞 XHamster Results for:* \`${query}\`\n━━━━━━━━━━━━━━━━━━\n`;
         results.forEach((r, i) => {
             const title = r.title.length > 60 ? r.title.slice(0, 57) + "..." : r.title;
@@ -40,7 +40,7 @@ cmd({
         text += "━━━━━━━━━━━━━━━━━━\n🔁 _Reply with a number to download._";
 
         const msg = await conn.sendMessage(from, {
-            image: { url: results[0].thumbnail || 'https://telegra.ph/file/63dcfdb47c0a2a5e2cde7.jpg' },
+            image: { url: results[0].image || 'https://telegra.ph/file/63dcfdb47c0a2a5e2cde7.jpg' },
             caption: text,
             footer: "© GOJO MD | XHamster Search",
             headerType: 4,
@@ -49,10 +49,10 @@ cmd({
                 isForwarded: true,
                 externalAdReply: {
                     title: "GOJO MD | Adult Search",
-                    body: "Powered by dtzhamster.netlify.app",
+                    body: "Powered by darkapi.vercel.app",
                     mediaType: 1,
                     thumbnailUrl: "https://telegra.ph/file/63dcfdb47c0a2a5e2cde7.jpg",
-                    sourceUrl: "https://dtzhamster.netlify.app",
+                    sourceUrl: "https://darkapi.vercel.app",
                     renderLargerThumbnail: true
                 }
             }
@@ -95,11 +95,11 @@ if (!global.__hamsterReplyListener) {
             try {
                 await hamsterConn.sendMessage(msg.key.remoteJid, { react: { text: "⏬", key: msg.key } });
 
-                const dlUrl = `https://dtzxhamsterdl.netlify.app/?url=${encodeURIComponent(video.url)}`;
+                const dlRes = await axios.get(`https://darkapi.vercel.app/api/xhamsterdl?url=${encodeURIComponent(video.url)}`);
+                if (!dlRes.data?.url) throw new Error("Download URL not found");
 
-                // Send as MP4 Document
                 await hamsterConn.sendMessage(msg.key.remoteJid, {
-                    document: { url: dlUrl },
+                    document: { url: dlRes.data.url },
                     mimetype: "video/mp4",
                     fileName: `${video.title || 'xhamster'}.mp4`,
                     caption: `*🎬 ${video.title}*\n\n📥 Source: ${video.url}\n_Powered by GOJO MD_`

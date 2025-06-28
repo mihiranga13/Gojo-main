@@ -43,7 +43,7 @@
     "fouadwa-scraper": "^2.0.0",
     "fs-extra": "^11.1.0",
     "node-cache": "^5.1.2",
-    "g-i-s": "^2.1.6",
+    "async-g-i-s": "^1.4.0",
     "youtube_scraper": "github:vreden/youtube_scraper",
     "yt-dlp-exec": "latest",
     "google-it": "^1.6.2",

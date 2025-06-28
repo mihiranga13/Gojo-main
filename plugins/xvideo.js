@@ -1,118 +1,77 @@
-const { cmd } = require('../lib/command');
-const axios = require('axios');
+// plugins/xvideo.js
+const l = console.log
 
-let hamsterConn = null;
-const replyCache = {};
+import config from '../settings.js'
+import { cmd, commands } from '../lib/command.js'
+import { xvideosSearch, xvideosdl } from '../lib/ascraper.js'
 
-cmd({
-    pattern: "xhsearch",
-    alias: ["hamster", "xhamster"],
-    desc: "Search and download videos from XHamster (darkapi.vercel.app)",
+cmd(
+  {
+    pattern: "xvid",
+    alias: ["xvideos"],
     react: "🔞",
-    category: "adult",
-    filename: __filename
-}, async (conn, mek, m, { from, args, reply }) => {
-    hamsterConn = conn;
-    const query = args.join(" ").trim();
-
-    if (!query) {
-        await conn.sendMessage(from, { react: { text: "❌", key: mek.key } });
-        return reply('🔎 Type something to search.\n\n📌 Example: `.xhsearch sri lanka`');
-    }
-
-    await conn.sendMessage(from, { react: { text: "🔍", key: mek.key } });
-
+    desc: "Search and download Xvideos videos",
+    category: "nsfw",
+    filename: import.meta.url, // ✅ ESM equivalent to __filename
+    group: true,
+    premium: false,
+    register: true,
+  },
+  async (robin, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sender, reply }) => {
     try {
-        const searchUrl = `https://darkapi.vercel.app/api/xhamster?search=${encodeURIComponent(query)}`;
-        const { data } = await axios.get(searchUrl);
+      if (!q) {
+        return reply(`✳️ What do you want to search?\n\nUsage: *${command} <search or URL>*\nExample: Hot desi bhabi or Xvideos URL`);
+      }
 
-        if (!Array.isArray(data.result) || data.result.length === 0) {
-            await conn.sendMessage(from, { react: { text: "❌", key: mek.key } });
-            return reply("❌ No results found. Try a different keyword.");
-        }
+      // 💡 Ensure global DB structure exists
+      if (!global.db) global.db = { data: { chats: {}, users: {} } }
+      if (!global.db.data) global.db.data = { chats: {}, users: {} }
+      if (!global.db.data.chats) global.db.data.chats = {}
+      if (!global.db.data.users) global.db.data.users = {}
 
-        const results = data.result.slice(0, 20); 
-        let text = `*🔞 XHamster Results for:* \`${query}\`\n━━━━━━━━━━━━━━━━━━\n`;
-        results.forEach((r, i) => {
-            const title = r.title.length > 60 ? r.title.slice(0, 57) + "..." : r.title;
-            text += `${i + 1}. ${title}\n`;
-        });
-        text += "━━━━━━━━━━━━━━━━━━\n🔁 _Reply with a number to download._";
+      const chat = global.db.data.chats[m.chat] || {}
+      const user = global.db.data.users[m.sender] || {}
 
-        const msg = await conn.sendMessage(from, {
-            image: { url: results[0].image || 'https://telegra.ph/file/63dcfdb47c0a2a5e2cde7.jpg' },
-            caption: text,
-            footer: "© GOJO MD | XHamster Search",
-            headerType: 4,
-            contextInfo: {
-                forwardingScore: 999,
-                isForwarded: true,
-                externalAdReply: {
-                    title: "GOJO MD | Adult Search",
-                    body: "Powered by darkapi.vercel.app",
-                    mediaType: 1,
-                    thumbnailUrl: "https://telegra.ph/file/63dcfdb47c0a2a5e2cde7.jpg",
-                    sourceUrl: "https://darkapi.vercel.app",
-                    renderLargerThumbnail: true
-                }
-            }
-        }, { quoted: mek });
+      // ❌ NSFW group restriction
+      if (!chat.nsfw) {
+        return reply(`🚫 This group does not support NSFW content.\nTo turn it on, use: *${command} enable nsfw*`);
+      }
 
-        if (msg?.key?.id) {
-            replyCache[msg.key.id] = results;
-        }
+      // ❌ Age restriction
+      const userAge = user.age || 0
+      if (userAge < 18) {
+        return reply(`❎ You must be 18 years or older to use this feature.`);
+      }
 
-        await conn.sendMessage(from, { react: { text: "✅", key: msg.key } });
-    } catch (err) {
-        console.error(err);
-        await conn.sendMessage(from, { react: { text: "❌", key: mek.key } });
-        reply("⚠️ Error while searching.");
+      m.react('⌛')
+
+      const isURL = /^(https?:\/\/)?(www\.)?xvideos\.com\/.+$/i.test(q)
+
+      if (isURL) {
+        const videoLinks = await xvideosdl(q)
+        const videoUrl = videoLinks?.high || videoLinks?.low || videoLinks?.hls
+
+        if (!videoUrl) return reply("❌ Video URL not found.")
+
+        await robin.sendMessage(from, {
+          video: { url: videoUrl },
+          caption: "🔞 Here is your Xvideos video."
+        }, { quoted: mek })
+
+      } else {
+        const results = await xvideosSearch(q)
+        if (!results.length) return reply("❌ No search results found for the given query.")
+
+        const searchResults = results.map((res, i) => (
+          `${i + 1}. *${res.title}*\nDuration: ${res.duration}\nURL: ${res.videoUrl}`
+        )).join('\n\n')
+
+        reply(`*Search Results for "${q}":*\n\n${searchResults}`)
+      }
+
+    } catch (e) {
+      console.error(e)
+      reply(`❌ Error: ${e.message || e}`)
     }
-});
-
-// Reply Listener for Download
-if (!global.__hamsterReplyListener) {
-    global.__hamsterReplyListener = true;
-
-    const { setTimeout } = require('timers');
-    function waitForConn() {
-        if (!hamsterConn) return setTimeout(waitForConn, 500);
-        hamsterConn.ev.on("messages.upsert", async ({ messages }) => {
-            const msg = messages[0];
-            if (!msg?.message) return;
-
-            const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
-            const quotedId = msg.message?.extendedTextMessage?.contextInfo?.stanzaId;
-            if (!quotedId || !(quotedId in replyCache)) return;
-
-            const index = parseInt(text.trim(), 10);
-            if (isNaN(index) || index < 1 || index > replyCache[quotedId].length) {
-                await hamsterConn.sendMessage(msg.key.remoteJid, { react: { text: "❌", key: msg.key } });
-                return;
-            }
-
-            const video = replyCache[quotedId][index - 1];
-            try {
-                await hamsterConn.sendMessage(msg.key.remoteJid, { react: { text: "⏬", key: msg.key } });
-
-                const dlRes = await axios.get(`https://darkapi.vercel.app/api/xhamsterdl?url=${encodeURIComponent(video.url)}`);
-                if (!dlRes.data?.url) throw new Error("Download URL not found");
-
-                await hamsterConn.sendMessage(msg.key.remoteJid, {
-                    document: { url: dlRes.data.url },
-                    mimetype: "video/mp4",
-                    fileName: `${video.title || 'xhamster'}.mp4`,
-                    caption: `*🎬 ${video.title}*\n\n📥 Source: ${video.url}\n_Powered by GOJO MD_`
-                }, { quoted: msg });
-
-                await hamsterConn.sendMessage(msg.key.remoteJid, { react: { text: "✅", key: msg.key } });
-            } catch (e) {
-                console.error(e);
-                await hamsterConn.sendMessage(msg.key.remoteJid, { react: { text: "❌", key: msg.key } });
-                hamsterConn.sendMessage(msg.key.remoteJid, { text: "❌ Failed to download video!" }, { quoted: msg });
-            }
-        });
-    }
-
-    waitForConn();
-}
+  }
+)

@@ -1,3 +1,4 @@
+
 const { cmd } = require('../lib/command');
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -23,24 +24,40 @@ async function searchMovies(query) {
 }
 
 async function getDownloadLinks(movieUrl) {
-  const res = await axios.get(movieUrl, { headers });
-  const $ = cheerio.load(res.data);
-  return $('a[href^="https://cinesubz.co/api-"]').map((_, el) => ({
-    link: $(el).attr('href'),
-    quality: $(el).text().trim(),
-    size: $(el).closest('li').next().text().trim()
-  })).get();
+  try {
+    const res = await axios.get(movieUrl, { headers });
+    const $ = cheerio.load(res.data);
+
+    const links = [];
+    $('li a').each((_, el) => {
+      const link = $(el).attr('href');
+      const text = $(el).text().trim();
+      if (link?.includes('/api-') && (text.includes('SD') || text.includes('HD') || text.includes('BluRay') || text.includes('Direct') || text.includes('FHD'))) {
+        const size = $(el).closest('li').next().text().trim();
+        links.push({ link, quality: text, size });
+      }
+    });
+    return links;
+  } catch (e) {
+    console.error('❌ Error parsing links:', e.message);
+    return [];
+  }
 }
 
 async function modifyLink(url) {
-  const res = await axios.get(url, { headers });
-  const $ = cheerio.load(res.data);
-  let mod = $('#link').attr('href') || url;
-  mod = mod.replace(/https:\/\/google\.com\/server\d{2}\/1:\//, "https://cinescloud.cskinglk.xyz/server1/")
-           .replace(/\.mp4\??/, "?ext=mp4")
-           .replace(/\.mkv\??/, "?ext=mkv")
-           .replace(/\.zip\??/, "?ext=zip");
-  return mod;
+  try {
+    const res = await axios.get(url, { headers });
+    const $ = cheerio.load(res.data);
+    let mod = $('#link').attr('href') || url;
+    mod = mod.replace(/https:\/\/google\.com\/server\d{2}\/1:\//, "https://cinescloud.cskinglk.xyz/server1/")
+             .replace(/\.mp4\??/, "?ext=mp4")
+             .replace(/\.mkv\??/, "?ext=mkv")
+             .replace(/\.zip\??/, "?ext=zip");
+    return mod;
+  } catch (e) {
+    console.error('❌ Error modifying link:', e.message);
+    return url;
+  }
 }
 
 async function fetchFileDetails(url) {
@@ -81,10 +98,15 @@ cmd({
     const idx = parseInt(msg.message.extendedTextMessage.text) - 1;
     if (idx < 0 || idx >= movies.length) return reply('❌ Invalid choice.', msg);
 
+    await conn.sendMessage(from, { react: { text: "🔄", key: msg.key } });
+
     const mData = movies[idx];
     const links = (await getDownloadLinks(mData.link)).filter(l => !l.quality.includes("Telegram"));
 
-    if (!links.length) return reply('❌ No valid links.');
+    if (!links.length) {
+      await conn.sendMessage(from, { react: { text: "❌", key: msg.key } });
+      return reply('❌ No valid links found.', msg);
+    }
 
     let detail = `🎬 *${mData.name}* (${mData.year})\n⭐ IMDb: ${mData.imdb}\n📝 ${mData.desc}\n\nReply with quality number:\n\n`;
 

@@ -52,12 +52,7 @@ cmd({
     filename: __filename
 }, async (conn, m, mek, { from, prefix, q, l, reply }) => {
     try {
-    
-    
         if (!q) return await reply('*Please Give Me Text..! 🖊️*')
-
-if (q.includes("https://slanimeclub.co/movies")) {
-
 
         const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclub/movie?url=${q}&apikey=vajiraofficial`)
         const movie = data.data?.data?.moviedata
@@ -86,159 +81,62 @@ if (q.includes("https://slanimeclub.co/movies")) {
         }
 
         return await conn.replyList(from, listMessage, { quoted: mek })
-        
-        } if (q.includes("https://slanimeclub.co/tvshow")) {
-        
-const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclub/tvshow?url=${q}&apikey=vajiraofficial`)
-
-        if (data.data.data.episodes.length < 1) return await conn.sendMessage(from, { text: lang ? "*මට කිසිවක් සොයාගත නොහැකි විය :(*" : "*No results found :(*" }, { quoted: mek });
-    
-        var srh = [];  
-        for (var i = 0; i < data.data.data.episodes.length; i++) {
-            srh.push({
-                title: i + 1,
-                description: `${data.data.data.episodes[i].title}|| 'N/A'}\n┃ 🌍 Date: ${data.data.data.episodes[i].date}\n┃ 🔗 Url: ${data.data.data.episodes[i].link}_\n┃━━━━━━━━━━━━━━━\n`,
-                rowId: prefix + 'slanimedl ' + data.data.data.episodes[i].link
-            });
-        }
-
-        const sections = [{
-            title: "_[Result from slanimeclub.]_",
-            rows: srh
-        }];
-        
-
-        const listMessage = {
-            text: '',
-            footer: config.FOOTER,
-            title: 'Result from slanimeclub. 📲',
-            buttonText: '*🔢 Reply below number*',
-            sections
-        }
-
-        return await conn.replyList(from, listMessage, { quoted: mek })
-        
-        }
-        
     } catch (e) {
         reply('*ERROR !!*')
         l(e)
     }
 })
 
-
 cmd({
-    pattern: `slanimedl`,
+    pattern: 'slanimedl',
     react: "📥",
     dontAddCommandList: true,
     filename: __filename
-}, async (conn, mek, m, { from, q, isDev, reply }) => {
-
-  
-
-    if (!q) {
-        return await reply(config.LANG === 'en' ? '*Please provide a direct URL!*' : '*කරුණාකර තොරතුරු URL එකක් ලබා දෙන්න!*');
-    }
+}, async (conn, mek, m, { from, q, reply }) => {
+    if (!q) return await reply('*Please provide a direct URL!*')
 
     try {
-        const mediaUrl = q.split("|")[0];
-        const title = q.split("|")[1] || 'tdd_movie_dl_system';
-        const data = await fetchJson(`${config.API}/api/slanimeclub/download?url=${mediaUrl}&apikey=${config.APIKEY}`);
-        const dl_link = `${data.data.data.link}`;
+        const [mediaUrl, title = 'tdd_movie_dl_system'] = q.split("|")
 
-        const msg = config.LANG === 'en' ? 'PLEASE WAIT.... DON\'T USE ANY COMMANDS 🚫' : 'කරුණාකර රුචිකර කරන්න.... ඕනෑම කමාන්ඩ් එකක් භාවිතා නොකරන්න 🚫';
-        await conn.sendMessage(from, { text: msg });
+        const data = await fetchJson(`https://vajira-movie-api.vercel.app/api/slanimeclub/download?url=${mediaUrl}&apikey=vajiraofficial`)
+        const dl_link = data?.data?.data?.link
 
-        const loadingMessage = await conn.sendMessage(from, { text: config.LANG === 'en' ? 'UPLOADING' : 'උඩුගත කරනවා' });
+        if (!dl_link) return await reply('*Unable to fetch download link.*')
 
-        const emojiMessages = [
-            "UPLOADING ●○○○○", "UPLOADING ●●○○○", "UPLOADING ●●●○○", "UPLOADING ●●●●○", "UPLOADING ●●●●●",
-            "UPLOADING ●○○○○", "UPLOADING ●●○○○", "UPLOADING ●●●○○", "UPLOADING ●●●●○", "UPLOADING ●●●●●",
-            config.LANG === 'en' ? "UPLOADING YOUR MOVIE" : "ඔබගේ චිත්‍රපටය උඩුගත කරනවා"
-        ];
+        await reply('╭═════════════════❀\n│  UPLOADING YOUR MOVIE 📥\n│ ❀ Target : WAIT FEW MINUTES...\n│ ❀ Use commands after come the movie\n│ ❀ Device : 1/3\n╰═════════════════❀')
 
-        for (const line of emojiMessages) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Delay for 1 second
-            await conn.relayMessage(
-                from,
-                {
-                    protocolMessage: {
-                        key: loadingMessage.key,
-                        type: 14,
-                        editedMessage: {
-                            conversation: line,
-                        },
-                    },
-                },
-                {}
-            );
-        }
-
-        if (dl_link.includes("https://slanimeclub.co")) {
-
-            await conn.sendMessage(from, {
-                document: {
-                    url: dl_link
-                },
+        if (dl_link.includes("slanimeclub.co")) {
+            const message = {
+                document: await getBuffer(dl_link),
                 caption: `${title}\n\n${config.FOOTER}`,
                 mimetype: "video/mp4",
-                jpegThumbnail: await getThumbnailBuffer(config.LOGO),
                 fileName: `${title}.mp4`
-            });
+            }
+            await conn.sendMessage(from, message)
 
-            reply(config.LANG === 'en' ? 'SUCCESSFULLY UPLOADED YOUR MOVIE ✅' : 'ඔබගේ චිත්‍රපටය සාර්ථකව උඩුගත කර ඇත ✅');
+        } else if (dl_link.includes("drive.google.com")) {
+            const res = await GDriveDl(dl_link)
+
+            if (res?.downloadUrl) {
+                const txt = `*[ Downloading file ]*\n\n*Name :* ${res.fileName}\n*Size :* ${res.fileSize}\n*Type :* ${res.mimetype}`
+                await reply(txt)
+                await conn.sendMessage(from, {
+                    document: { url: res.downloadUrl },
+                    caption: `${res.fileName}\n\n${config.FOOTER}`,
+                    fileName: res.fileName,
+                    mimetype: res.mimetype
+                }, { quoted: mek })
+            } else {
+                await reply('*Google Drive Link is not downloadable.*')
+            }
+        } else {
+            await reply('*Unsupported download link format.*')
         }
 
-        if (dl_link.includes("https://drive.google.com")) {
-    
-    const match = dl_link.match(/\/d\/(.+?)\//);
-    if (!match) return reply("❌ Invalid Google Drive file link format.");
+        await conn.sendMessage(from, { react: { text: '✅', key: mek.key } })
 
-    const fileId = match[1];
-    const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-    const res = await axios.get(url, { responseType: "text" });
-
-    if (res.headers["content-disposition"]) {
-        // Direct download for small files
-        return await conn.sendMessage(from, {
-            document: { url },
-            caption: `📦 *Google Drive File:*\n*🎬 Title:* ${title}\n\n${config.FOOTER}`,
-            mimetype: "application/octet-stream",
-            jpegThumbnail: await getThumbnailBuffer(config.LOGO),
-            fileName: `${title}.mp4`
-        }, { quoted: mek });
-    }
-
-    // Handle large files that need confirmation token
-    const $ = cheerio.load(res.data);
-    const confirm = $('form').attr('action');
-    const confirmUrl = `https://drive.google.com${confirm}`;
-
-    const finalRes = await axios.post(confirmUrl, null, {
-        responseType: "stream",
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-    });
-
-    const fileName = `${title}.mp4`;
-
-    await conn.sendMessage(from, {
-        document: finalRes.data,
-        fileName,
-        caption: `📦 *Google Drive File:*\n*🎬 Title:* ${title}\n\n${config.FOOTER}`,
-        mimetype: "application/octet-stream",
-        jpegThumbnail: await getThumbnailBuffer(config.LOGO)
-    }, { quoted: mek });
-
-    reply(config.LANG === 'en' ? '✅ *Successfully uploaded your movie!*' : '✅ *ඔබගේ චිත්‍රපටය සාර්ථකව උඩුගත කර ඇත!*');
-}
-
-
-        await conn.sendMessage(from, { react: { text: '✅', key: mek.key } });
     } catch (error) {
-        console.error('Error fetching or sending', error);
-        await conn.sendMessage(from, config.LANG === 'en' ? '*Error fetching or sending*' : '*දෝෂයක් සොයාගැනීම හෝ එවීම*', { quoted: mek });
+        console.error('Error fetching or sending:', error)
+        await reply('*Error fetching or sending*')
     }
-});
+})

@@ -9,8 +9,6 @@
     "restart": "pm2 restart GOJO"
   },
   "dependencies": {
-    "cheerio": "1.0.0-rc.12",
-    "css-select": "4.3.0",
     "@adiwajshing/keyed-db": "^0.2.4",
     "@blackamda/telegram-image-url": "^1.0.0",
     "@bochilteam/scraper": "^4.0.22-alpha.0",
@@ -32,6 +30,8 @@
     "ytsr": "^3.8.4",
     "crypto": "latest",
     "chatgpt-scraper": "^1.0.0",
+    "cheerio": "latest",
+    "css-select": "4.1.0",
     "@dark-yasiya/yt-dl.js": "^1.0.4",
     "express": "latest",
     "request": "latest",

@@ -1,49 +1,50 @@
 const { cmd } = require('../lib/command');
-const fetch = require('node-fetch');
+const axios = require('axios');
+
+const BRAND = '✫☘𝐆𝐎𝐉𝐎 𝐌𝐎𝐕𝐈𝐄 𝐇𝐎𝐌𝐄☢️☘';
 
 cmd({
-  pattern: 'gdrive',
-  alias: ['drive'],
-  desc: 'Download Google Drive files by ID or full link',
-  category: 'download',
-  react: '📂',
-  filename: __filename
-}, async (conn, mek, m, { from, q, reply }) => {
+  pattern: "gdrive",
+  desc: "Download Google Drive file via direct link",
+  react: "📁",
+  category: "media",
+  filename: __filename,
+}, async (conn, mek, m, { from, args, reply }) => {
   try {
-    if (!q) return reply('❌ *Link එකක් හෝ file ID එකක් දෙන්න!*\nඋදා: `.gdrive https://drive.google.com/file/d/FILE_ID/view?usp=sharing`');
-
-    // 🔍 Extract Google Drive File ID
-    const match = q.match(/(?:\/d\/|id=)([a-zA-Z0-9_-]{10,})/);
-    if (!match) return reply('❌ Valid Google Drive link එකක් නොවෙයි.');
-
-    const fileId = match[1];
-    const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-    // 🌐 Fetch the file
-    const res = await fetch(url);
-
-    // 🛑 Check if the file is available
-    const contentType = res.headers.get('content-type');
-    if (!res.ok || contentType.includes('text/html')) {
-      return reply('⚠️ Download කරන්න බෑ. File එක *public* කරලා තියෙනවද බලන්න.');
+    const gdriveUrl = args.join(" ").trim();
+    if (!gdriveUrl.includes("drive.google.com")) {
+      await conn.sendMessage(from, { react: { text: "❌", key: mek.key }});
+      return reply("*❌ Provide a valid Google Drive link!*\nExample: `.gdrive https://drive.google.com/file/d/XYZ/view`");
     }
 
-    // 📄 Extract file name from headers or use default
-    const contentDisposition = res.headers.get('content-disposition') || '';
-    const filenameMatch = contentDisposition.match(/filename="(.+?)"/);
-    const filename = filenameMatch ? filenameMatch[1] : `GDrive-File.bin`;
+    await conn.sendMessage(from, { react: { text: "⏬", key: mek.key } });
 
-    const buffer = await res.buffer();
+    const api = `https://apis.davidcyriltech.my.id/gdrive?url=${encodeURIComponent(gdriveUrl)}`;
+    const res = await axios.get(api);
 
-    // 📤 Send the file
+    if (!res.data || !res.data.downloadUrl) {
+      await conn.sendMessage(from, { react: { text: "❌", key: mek.key }});
+      return reply("❌ Failed to get the direct download link.");
+    }
+
+    const { fileName, downloadUrl, size } = res.data;
+
+    const sizeMB = parseFloat(size) / 1024 / 1024;
+    if (sizeMB > 2048) {
+      return reply(`⚠️ File too large for direct upload.\n📎 *Download Link:* ${downloadUrl}`);
+    }
+
     await conn.sendMessage(from, {
-      document: buffer,
-      fileName: filename,
-      mimetype: contentType,
+      document: { url: downloadUrl },
+      mimetype: "application/octet-stream",
+      fileName,
+      caption: `📁 *File Name:* ${fileName}\n📦 *Size:* ${size}\n\n🔥 ${BRAND}`
     }, { quoted: mek });
 
+    await conn.sendMessage(from, { react: { text: "✅", key: mek.key }});
   } catch (e) {
-    console.error('[GDRIVE ERROR]', e);
-    reply('❌ File එක download කරන්න ගියාම වැරදි එනවා. අලුත් link එකක් check කරන්න.');
+    console.error("GDrive error:", e);
+    await conn.sendMessage(from, { react: { text: "❌", key: mek.key }});
+    reply("❌ ERROR: Could not process Google Drive link.");
   }
 });

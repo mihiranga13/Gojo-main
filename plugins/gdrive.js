@@ -1,54 +1,55 @@
-const { fetchJson } = require('../lib/functions');
-const { cmd } = require('../lib/command');
-const config = require('../settings');
+const { fetchJson } = require('../lib/functions')
+const { cmd } = require('../lib/command')
 
-// ✅ Synchronous default fallback baseUrl in case fetch fails
-let baseUrl = 'https://apis.davidcyriltech.my.id'; // Default fallback URL
+let baseUrl;
 
-// ✅ Asynchronously update baseUrl from remote JSON
-fetchJson('https://raw.githubusercontent.com/prabathLK/PUBLIC-URL-HOST-DB/main/public/url.json')
-  .then(res => {
-    if (res && res.api) baseUrl = res.api;
-  })
-  .catch(err => console.log('⚠️ Failed to fetch dynamic baseUrl. Using default.'));
-
-const yourName = 'Gojo-MD ✻'; // ✅ Optional branding
+(async () => {
+  try {
+    const res = await fetchJson('https://raw.githubusercontent.com/prabathLK/PUBLIC-URL-HOST-DB/main/public/url.json')
+    baseUrl = res.api
+    console.log('Base URL fetched:', baseUrl)
+  } catch (error) {
+    console.error('Failed to fetch baseUrl:', error)
+  }
+})()
 
 cmd({
-  pattern: "gdrive5",
-  desc: "Download Google Drive files",
-  category: "download",
-  react: "⬇️",
+  pattern: 'gdrive5',
+  desc: 'Download Google Drive files (public links only)',
+  category: 'download',
+  react: '⬇️',
   filename: __filename
 },
-async (conn, mek, m, {
-  from, quoted, q, reply
-}) => {
+async (conn, mek, m, { from, reply, args, q }) => {
   try {
-    if (!q || !q.startsWith("https://")) {
-      return reply("❌ Please provide a valid Google Drive URL.");
+    if (!q || !q.startsWith('https://')) return reply('Please provide a valid Google Drive file URL.')
+
+    if (!baseUrl) return reply('Server is still initializing, please try again in a moment.')
+
+    reply('*Downloading your file...*')
+
+    // Construct API URL to get download info
+    const apiUrl = `${baseUrl}/api/gdrivedl?url=${encodeURIComponent(q)}`
+
+    // Fetch data from API
+    const data = await fetchJson(apiUrl)
+
+    if (!data || !data.data || !data.data.download) {
+      return reply('❌ Failed to fetch download link. Make sure the link is public and correct.')
     }
 
-    await conn.sendMessage(from, { react: { text: "📥", key: mek.key } });
-    reply("*Gojo-MD: Downloading your file...*");
-
-    const res = await fetchJson(`${baseUrl}/api/gdrivedl?url=${q}`);
-
-    if (!res || !res.data || !res.data.download) {
-      return reply("❌ Failed to fetch download link. Make sure the link is public.");
-    }
-
+    // Send document to chat
     await conn.sendMessage(from, {
-      document: { url: res.data.download },
-      fileName: res.data.fileName || "gdrive_file",
-      mimetype: res.data.mimeType || "application/octet-stream",
-      caption: `${res.data.fileName || 'File'}\n\n© ${yourName}`
-    }, { quoted: mek });
-
-    await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
+      document: {
+        url: data.data.download
+      },
+      fileName: data.data.fileName || 'file',
+      mimetype: data.data.mimeType || 'application/octet-stream',
+      caption: `Downloaded: ${data.data.fileName || 'file'}`
+    }, { quoted: mek })
 
   } catch (e) {
-    console.error(e);
-    reply(`❌ Error: ${e.message}`);
+    console.error('Error in gdrive5 command:', e)
+    reply(`❌ Error: ${e.message || e}`)
   }
-});
+})
